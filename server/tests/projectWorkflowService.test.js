@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { analyzeRepository } from '../src/services/projectWorkflowService.js';
+import { analyzeRepository, getAnalysis } from '../src/services/projectWorkflowService.js';
 
 let mongoServer;
 
@@ -117,6 +117,29 @@ test('Project Workflow Service', async (t) => {
     const result1 = await analyzeRepository('https://github.com/test-owner/test-dup');
     const result2 = await analyzeRepository('https://github.com/test-owner/test-dup');
     assert.notStrictEqual(result1.analysisId, result2.analysisId);
+  });
+
+  await t.test('getAnalysis should retrieve safe DTO by ID', async (t) => {
+    const saved = await analyzeRepository('https://github.com/test-owner/test-repo');
+    const retrieved = await getAnalysis(saved.analysisId);
+    
+    assert.strictEqual(retrieved.analysisId, saved.analysisId);
+    assert.strictEqual(retrieved.repository.owner, 'test-owner');
+    assert.strictEqual(retrieved.__v, undefined);
+    assert.strictEqual(retrieved._id, undefined);
+    assert.strictEqual(retrieved.analysis.files, undefined);
+  });
+
+  await t.test('getAnalysis should throw 404 for non-existent ID', async (t) => {
+    const fakeId = new mongoose.Types.ObjectId().toString();
+    await assert.rejects(
+      async () => await getAnalysis(fakeId),
+      (err) => {
+        assert.strictEqual(err.statusCode, 404);
+        assert.strictEqual(err.code, 'ANALYSIS_NOT_FOUND');
+        return true;
+      }
+    );
   });
 
   await t.test('should bubble up persistence failure', async (t) => {

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { analyzeProject } from '../src/controllers/projectController.js';
+import { analyzeProject, getProjectAnalysis } from '../src/controllers/projectController.js';
 
 let mongoServer;
 
@@ -117,5 +117,57 @@ test('Project Controller', async (t) => {
     assert.ok(passedError);
     assert.strictEqual(passedError.statusCode, 429);
     assert.strictEqual(passedError.code, 'RATE_LIMIT_EXCEEDED');
+  });
+
+  await t.test('getProjectAnalysis should return 200 with success response', async (t) => {
+    const fakeId = new mongoose.Types.ObjectId().toString();
+    // Insert a minimal valid document using the actual Task 6 analyzer output shapes.
+    const Model = mongoose.model('ProjectAnalysis');
+    await Model.create({
+      _id: fakeId,
+      repository: { owner: 'owner', name: 'repo', fullName: 'owner/repo', defaultBranch: 'main' },
+      summary: { languages: [], frameworks: [], libraries: [] },
+      structure: { directories: [], importantFiles: [], entryPoints: [] },
+      dependencies: { manifests: [], packages: [] },
+      api: { indicators: [] },
+      database: { indicators: [] },
+      authentication: { indicators: [] },
+      testing: { indicators: [] },
+      documentation: { indicators: [] },
+      deployment: { indicators: [] },
+      analysisMetadata: { analysisVersion: '1.0.0', limitations: [] }
+    });
+
+    const req = { params: { analysisId: fakeId } };
+    let statusCalledWith = null;
+    let jsonCalledWith = null;
+    let nextCalled = false;
+
+    const res = {
+      status: (code) => { statusCalledWith = code; return res; },
+      json: (data) => { jsonCalledWith = data; return res; }
+    };
+    
+    const next = (err) => { nextCalled = true; };
+
+    await getProjectAnalysis(req, res, next);
+
+    assert.strictEqual(statusCalledWith, 200);
+    assert.ok(jsonCalledWith.success);
+    assert.strictEqual(jsonCalledWith.data.analysisId, fakeId);
+    assert.strictEqual(nextCalled, false);
+  });
+
+  await t.test('getProjectAnalysis should call next(error) on missing ID', async (t) => {
+    const req = { params: {} };
+    const res = {};
+    let passedError = null;
+    const next = (err) => { passedError = err; };
+
+    await getProjectAnalysis(req, res, next);
+
+    assert.ok(passedError);
+    assert.strictEqual(passedError.statusCode, 400);
+    assert.strictEqual(passedError.code, 'INVALID_INPUT');
   });
 });

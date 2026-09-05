@@ -2,7 +2,7 @@ import { parseGitHubUrl } from '../utils/githubParser.js';
 import { getRepository } from './githubService.js';
 import { retrieveAndNormalizeRepositoryInput } from './githubContentService.js';
 import { runDeterministicAnalysis } from './analysis/analysisOrchestrator.js';
-import { saveAnalysis } from './projectAnalysisService.js';
+import { saveAnalysis, getAnalysisById } from './projectAnalysisService.js';
 
 /**
  * Orchestrates the full analysis workflow for a given GitHub repository URL.
@@ -28,6 +28,24 @@ export async function analyzeRepository(url) {
   const savedDocument = await saveAnalysis(analysisPayload);
   
   // 6. Return Safe Output (DTO Boundary)
+  return createSafeDTO(savedDocument);
+}
+
+/**
+ * Retrieves a specific analysis snapshot by its MongoDB _id.
+ * 
+ * @param {string} analysisId - The ID of the analysis to retrieve.
+ * @returns {Promise<Object>} A safe Data Transfer Object representing the persisted analysis.
+ */
+export async function getAnalysis(analysisId) {
+  const document = await getAnalysisById(analysisId);
+  return createSafeDTO(document);
+}
+
+/**
+ * Helper to construct the safe DTO from a Mongoose document.
+ */
+function createSafeDTO(savedDocument) {
   const analysisObj = savedDocument.toObject();
   
   return {

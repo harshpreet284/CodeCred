@@ -1,15 +1,17 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import './App.css'
-import Navbar from './components/layout/Navbar'
-import Footer from './components/layout/Footer'
-import Alert from './components/layout/Alert'
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import './App.css';
+import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
+import Alert from './components/layout/Alert';
 import Home from "./pages/Home";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 import { GithubProvider } from './Context/Github/GithubContext';
 import { AlertProvider } from './Context/alert/AlertContext';
-import User from './pages/User'
+import User from './pages/User';
 import { Shell } from './components/CodeCred/Shell';
+import { CodeCredLayout } from './components/CodeCred/CodeCredLayout';
+import { EvidenceReport } from './components/CodeCred/EvidenceReport';
 
 function LegacyApp() {
   return (
@@ -37,11 +39,14 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path='/' element={<Shell />} />
+        <Route path='/' element={<CodeCredLayout />}>
+          <Route index element={<Shell />} />
+          <Route path='projects/:analysisId' element={<EvidenceReport />} />
+        </Route>
         <Route path='/legacy/*' element={<LegacyApp />} />
       </Routes>
     </BrowserRouter>
   )
 }
 
-export default App
+export default App;

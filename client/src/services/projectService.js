@@ -19,3 +19,18 @@ export async function analyzeProject(repositoryUrl) {
     throw error;
   }
 }
+
+export async function getProjectAnalysis(analysisId) {
+  try {
+    const response = await fetch(`/api/projects/${analysisId}`);
+    const data = await response.json();
+    
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || 'An unexpected error occurred retrieving the analysis.');
+    }
+
+    return data.data;
+  } catch (error) {
+    throw error;
+  }
+}
