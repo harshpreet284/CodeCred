@@ -9,28 +9,38 @@ import NotFound from "./pages/NotFound";
 import { GithubProvider } from './Context/Github/GithubContext';
 import { AlertProvider } from './Context/alert/AlertContext';
 import User from './pages/User'
-function App() {
+import { Shell } from './components/CodeCred/Shell';
+
+function LegacyApp() {
   return (
     <GithubProvider>
       <AlertProvider>
-    <BrowserRouter>
-     <div className="flex flex-col justify-between h-screen">
-      <Navbar />
-      <main className='container px-3 pb-12 mx-auto'>
-        <Alert />
-        <Routes>
-          <Route path='/' element={<Home />} />
-          <Route path='/about' element={<About />} />
-          <Route path='/user/:username' element={<User />} />
-          <Route path='/notfound' element={<NotFound />} />
-          <Route path='/*' element={<NotFound />} />
-        </Routes>
-      </main>
-      <Footer />
-     </div>
-    </BrowserRouter>
-    </AlertProvider>
+        <div className="flex flex-col justify-between h-screen">
+          <Navbar />
+          <main className='container px-3 pb-12 mx-auto'>
+            <Alert />
+            <Routes>
+              <Route path='/' element={<Home />} />
+              <Route path='/about' element={<About />} />
+              <Route path='/user/:username' element={<User />} />
+              <Route path='/*' element={<NotFound />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
+      </AlertProvider>
     </GithubProvider>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path='/' element={<Shell />} />
+        <Route path='/legacy/*' element={<LegacyApp />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
