@@ -1,13 +1,8 @@
 import { Router } from 'express';
+import { checkHealth } from '../controllers/healthController.js';
 
 const router = Router();
 
-router.get('/', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'CodeCred API is running',
-    timestamp: new Date().toISOString()
-  });
-});
+router.get('/', checkHealth);
 
 export default router;
