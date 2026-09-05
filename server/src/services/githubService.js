@@ -27,7 +27,7 @@ export async function getRepository(owner, repo) {
   return normalizeRepository(data);
 }
 
-async function handleGitHubError(response) {
+export async function handleGitHubError(response) {
   const status = response.status;
   
   if (status === 404) {

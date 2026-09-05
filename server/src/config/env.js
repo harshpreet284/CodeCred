@@ -6,4 +6,9 @@ export const config = {
   port: process.env.PORT || 5000,
   nodeEnv: process.env.NODE_ENV || 'development',
   githubToken: process.env.GITHUB_TOKEN || null,
+  retrievalLimits: {
+    maxFilesToFetch: 50,
+    maxFileSize: 500 * 1024, // 500 KB
+    maxTotalContentSize: 5 * 1024 * 1024 // 5 MB
+  }
 };
