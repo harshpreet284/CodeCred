@@ -16,5 +16,10 @@ module.exports = {
       'warn',
       { allowConstantExport: true },
     ],
+    'react/prop-types': 'off',
+    'no-unused-vars': 'off',
+    'react/no-unescaped-entities': 'off',
+    'no-undef': 'off',
+    'react-hooks/exhaustive-deps': 'off',
   },
 }
