@@ -6,6 +6,8 @@ export const config = {
   port: process.env.PORT || 5000,
   nodeEnv: process.env.NODE_ENV || 'development',
   githubToken: process.env.GITHUB_TOKEN || null,
+  geminiApiKey: process.env.GEMINI_API_KEY || null,
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-3.1-pro-preview',
   mongoUri: process.env.MONGODB_URI,
   retrievalLimits: {
     maxFilesToFetch: 50,
