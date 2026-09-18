@@ -58,3 +58,40 @@ export const generateQuestions = async (req, res, next) => {
     next(error);
   }
 };
+export const evaluateAnswers = async (req, res, next) => {
+  try {
+    const { analysisId } = req.params;
+    
+    if (!analysisId) {
+      throw new AppError('Analysis ID is required', 400, 'INVALID_INPUT');
+    }
+
+    const { sessionData } = req.body;
+    
+    // Request validation happens here and in the validator
+    if (!sessionData) {
+      throw new AppError('sessionData is required', 400, 'INVALID_INPUT');
+    }
+    if (!Array.isArray(sessionData)) {
+      throw new AppError('sessionData must be an array', 400, 'INVALID_INPUT');
+    }
+    if (sessionData.length === 0 || sessionData.length > 10) {
+      throw new AppError('sessionData array length must be between 1 and 10', 400, 'INVALID_INPUT');
+    }
+
+    // Need raw model for context building
+    const { getAnalysisById } = await import('../services/projectAnalysisService.js');
+    const analysis = await getAnalysisById(analysisId);
+    
+    if (!analysis) {
+      throw new AppError('Analysis not found', 404, 'NOT_FOUND');
+    }
+
+    const { evaluateSessionAnswers } = await import('../services/ai/answerEvaluator.js');
+    const evaluations = await evaluateSessionAnswers(analysis, sessionData);
+    
+    sendSuccess(res, { evaluations }, 'Answers evaluated successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+};
