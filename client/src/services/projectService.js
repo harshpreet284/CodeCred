@@ -34,3 +34,24 @@ export async function getProjectAnalysis(analysisId) {
     throw error;
   }
 }
+
+export async function generateQuestions(analysisId) {
+  try {
+    const response = await fetch(`/api/projects/${analysisId}/questions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || 'An unexpected error occurred generating questions.');
+    }
+
+    return data.data;
+  } catch (error) {
+    throw error;
+  }
+}

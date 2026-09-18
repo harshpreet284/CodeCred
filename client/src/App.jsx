@@ -13,6 +13,8 @@ import { Shell } from './components/CodeCred/Shell';
 import { CodeCredLayout } from './components/CodeCred/CodeCredLayout';
 import { EvidenceReport } from './components/CodeCred/EvidenceReport';
 
+import { InterviewSession } from './components/CodeCred/InterviewSession';
+
 function LegacyApp() {
   return (
     <GithubProvider>
@@ -42,6 +44,7 @@ function App() {
         <Route path='/' element={<CodeCredLayout />}>
           <Route index element={<Shell />} />
           <Route path='projects/:analysisId' element={<EvidenceReport />} />
+          <Route path='projects/:analysisId/interview' element={<InterviewSession />} />
         </Route>
         <Route path='/legacy/*' element={<LegacyApp />} />
       </Routes>

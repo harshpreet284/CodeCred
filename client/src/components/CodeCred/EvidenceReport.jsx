@@ -159,13 +159,16 @@ export function EvidenceReport() {
         <p className="text-zinc-400 text-lg">
           {repository.owner}/{repository.name} &middot; {repository.defaultBranch}
         </p>
-        {languageNames.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-4">
+        <div className="flex items-center justify-between mt-4">
+          <div className="flex flex-wrap gap-2">
             {languageNames.map(lang => (
               <Badge key={lang} variant="secondary">{lang}</Badge>
             ))}
           </div>
-        )}
+          <Link to={`/projects/${data.analysisId}/interview`}>
+            <Button variant="primary">Start Interview</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Retrieval Limitations — shown when analysis coverage was incomplete */}
