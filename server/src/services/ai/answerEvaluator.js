@@ -1,4 +1,4 @@
-import { generateText } from './geminiService.js';
+import { generateText } from './aiProvider.js';
 import { buildAIContext } from './contextBuilder.js';
 import { validateSessionData, validateGeminiEvaluations } from './evaluationValidator.js';
 import { AppError } from '../../utils/AppError.js';
@@ -47,7 +47,29 @@ const evaluateWithRetry = async (promptString, maxRetries = 1) => {
     try {
       responseText = await generateText(promptString, {
         systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: 'application/json'
+        responseMimeType: 'application/json',
+        schema: {
+          type: "object",
+          properties: {
+            evaluations: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  questionId: { type: "string" },
+                  isCorrect: { type: "boolean" },
+                  completeness: { type: "string" },
+                  feedback: { type: "string" },
+                  unsupportedClaims: { type: "array", items: { type: "string" } }
+                },
+                required: ["questionId", "isCorrect", "completeness", "feedback", "unsupportedClaims"],
+                additionalProperties: false
+              }
+            }
+          },
+          required: ["evaluations"],
+          additionalProperties: false
+        }
       });
     } catch (error) {
       // Transient provider failure (e.g. 500/429)

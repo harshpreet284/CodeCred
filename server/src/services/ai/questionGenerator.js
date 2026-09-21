@@ -1,4 +1,4 @@
-import { generateText } from './geminiService.js';
+import { generateText } from './aiProvider.js';
 import { buildAIContext } from './contextBuilder.js';
 import { validateQuestions } from './questionValidator.js';
 import { AppError } from '../../utils/AppError.js';
@@ -42,7 +42,29 @@ const generateQuestionsWithRetry = async (contextString, maxRetries = 1) => {
         `<REPOSITORY_EVIDENCE>\n${contextString}\n</REPOSITORY_EVIDENCE>`,
         {
           systemInstruction: SYSTEM_INSTRUCTION,
-          responseMimeType: 'application/json'
+          responseMimeType: 'application/json',
+          schema: {
+            type: "object",
+            properties: {
+              questions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    category: { type: "string" },
+                    difficulty: { type: "string" },
+                    text: { type: "string" },
+                    technicalEntities: { type: "array", items: { type: "string" } },
+                    targetEvidenceRefs: { type: "array", items: { type: "string" } }
+                  },
+                  required: ["category", "difficulty", "text", "technicalEntities", "targetEvidenceRefs"],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ["questions"],
+            additionalProperties: false
+          }
         }
       );
     } catch (error) {

@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { evaluateAnswers } from '../src/controllers/projectController.js';
-import { setClient_forTesting, resetClient_forTesting } from '../src/services/ai/geminiService.js';
+import { setClient_forTesting, resetClient_forTesting } from '../src/services/ai/aiProvider.js';
 // We must import the model to create data for the dynamic import in controller
 import '../src/models/ProjectAnalysis.js'; 
 

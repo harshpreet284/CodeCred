@@ -116,3 +116,10 @@ A useful evaluation may say:
 - “The repository does not provide enough evidence to determine this.”
 
 The goal is interview readiness, not positive sentiment.
+
+## Model Configuration
+
+The Gemini API model used for the free-tier implementation is:
+- Gemini 3.6 Flash
+- API model ID: gemini-3.6-flash
+

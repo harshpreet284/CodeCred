@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import { generateInterviewQuestions } from '../src/services/ai/questionGenerator.js';
-import { setClient_forTesting } from '../src/services/ai/geminiService.js';
+import { setClient_forTesting } from '../src/services/ai/aiProvider.js';
 
 describe('Task 10.3 Adversarial Grounding Tests', () => {
   const createMockAnalysis = () => ({

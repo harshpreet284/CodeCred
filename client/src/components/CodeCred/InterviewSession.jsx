@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { generateQuestions } from '../../services/projectService';
+import { generateQuestions, evaluateAnswers } from '../../services/projectService';
 import { Panel } from '../ui/Panel';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -10,11 +10,23 @@ export function InterviewSession() {
   const [questions, setQuestions] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // User answers keyed by question ID
   const [answers, setAnswers] = useState({});
+  
+  // Evaluation state
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluationError, setEvaluationError] = useState('');
+  const [validationError, setValidationError] = useState('');
+  // Evaluations keyed by question ID
+  const [evaluations, setEvaluations] = useState(null);
 
   const fetchQuestions = async () => {
     setIsLoading(true);
     setError('');
+    setEvaluationError('');
+    setValidationError('');
+    setEvaluations(null);
     try {
       const result = await generateQuestions(analysisId);
       setQuestions(result.questions || []);
@@ -30,11 +42,12 @@ export function InterviewSession() {
   useEffect(() => {
     let isMounted = true;
     
-    // We wrap fetchQuestions in an IIFE to respect the mounting check
-    // even though it's bound to the component scope.
     const initialize = async () => {
       setIsLoading(true);
       setError('');
+      setEvaluationError('');
+      setValidationError('');
+      setEvaluations(null);
       try {
         const result = await generateQuestions(analysisId);
         if (isMounted) {
@@ -59,10 +72,45 @@ export function InterviewSession() {
   }, [analysisId]);
 
   const handleAnswerChange = (questionId, value) => {
+    if (evaluations) return; // Freeze answers if evaluated
     setAnswers(prev => ({
       ...prev,
       [questionId]: value
     }));
+  };
+
+  const handleSubmit = async () => {
+    setValidationError('');
+    setEvaluationError('');
+
+    // Client-side UX validation
+    for (const q of questions) {
+      const ans = answers[q.id];
+      if (!ans || ans.trim() === '') {
+        setValidationError('Please answer all questions before submitting.');
+        return;
+      }
+    }
+
+    setIsEvaluating(true);
+    try {
+      const sessionData = questions.map(q => ({
+        question: q,
+        answer: answers[q.id]
+      }));
+
+      const result = await evaluateAnswers(analysisId, sessionData);
+      
+      const evalMap = {};
+      result.evaluations.forEach(ev => {
+        evalMap[ev.questionId] = ev;
+      });
+      setEvaluations(evalMap);
+    } catch (err) {
+      setEvaluationError(err.message || 'An error occurred during evaluation.');
+    } finally {
+      setIsEvaluating(false);
+    }
   };
 
   if (isLoading) {
@@ -114,34 +162,106 @@ export function InterviewSession() {
         </p>
       </div>
 
+      {validationError && (
+        <div className="bg-amber-900/30 border border-amber-800/50 text-amber-200 px-4 py-3 rounded-md text-sm">
+          {validationError}
+        </div>
+      )}
+
+      {evaluationError && (
+        <div className="bg-red-900/30 border border-red-800/50 p-4 rounded-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="text-red-200 text-sm">{evaluationError}</div>
+          <Button variant="primary" onClick={handleSubmit} disabled={isEvaluating}>
+            Retry Submission
+          </Button>
+        </div>
+      )}
+
       <div className="space-y-6">
-        {questions.map((q, index) => (
-          <Panel key={q.id || index} title={`Question ${index + 1}`}>
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                {q.category && <Badge variant="secondary">{q.category}</Badge>}
-                {q.difficulty && <Badge variant="neutral">{q.difficulty}</Badge>}
+        {questions.map((q, index) => {
+          const evalResult = evaluations ? evaluations[q.id] : null;
+          return (
+            <Panel key={q.id || index} title={`Question ${index + 1}`}>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  {q.category && <Badge variant="secondary">{q.category}</Badge>}
+                  {q.difficulty && <Badge variant="neutral">{q.difficulty}</Badge>}
+                </div>
+                <p className="text-zinc-100 text-base">{q.text}</p>
+                
+                <div className="pt-2">
+                  <textarea
+                    className="w-full bg-zinc-900 border border-zinc-700 focus:border-emerald-500 focus:ring-emerald-500 text-zinc-50 rounded-md px-3 py-3 text-sm placeholder-zinc-500 focus:outline-none focus:ring-1 resize-y min-h-[120px] disabled:opacity-60 disabled:cursor-not-allowed"
+                    placeholder="Type your answer here..."
+                    value={answers[q.id] || ''}
+                    onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                    disabled={isEvaluating || !!evaluations}
+                  />
+                </div>
+
+                {evalResult && (
+                  <div className="mt-4 p-4 rounded-md bg-zinc-800/50 border border-zinc-700 space-y-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {evalResult.isCorrect ? (
+                        <Badge variant="primary" className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                          Correct
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="bg-red-500/20 text-red-400 border-red-500/30">
+                          Incorrect
+                        </Badge>
+                      )}
+                      
+                      <Badge variant="neutral" className="capitalize">
+                        {evalResult.completeness}
+                      </Badge>
+                    </div>
+                    
+                    <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                      {evalResult.feedback}
+                    </div>
+
+                    {evalResult.unsupportedClaims && evalResult.unsupportedClaims.length > 0 && (
+                      <div className="mt-4 bg-amber-900/20 border border-amber-800/40 rounded-md p-3">
+                        <h4 className="text-amber-400 text-sm font-semibold mb-2">Unsupported Claims</h4>
+                        <ul className="list-disc list-inside space-y-1">
+                          {evalResult.unsupportedClaims.map((claim, idx) => (
+                            <li key={idx} className="text-amber-200/90 text-sm">{claim}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <p className="text-zinc-100 text-base">{q.text}</p>
-              
-              <div className="pt-2">
-                <textarea
-                  className="w-full bg-zinc-900 border border-zinc-700 focus:border-emerald-500 focus:ring-emerald-500 text-zinc-50 rounded-md px-3 py-3 text-sm placeholder-zinc-500 focus:outline-none focus:ring-1 resize-y min-h-[120px]"
-                  placeholder="Type your answer here..."
-                  value={answers[q.id] || ''}
-                  onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                />
-              </div>
-            </div>
-          </Panel>
-        ))}
+            </Panel>
+          );
+        })}
       </div>
       
-      <div className="pt-6 flex justify-between border-t border-zinc-800">
+      <div className="pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-zinc-800">
         <Link to={`/projects/${analysisId}`}>
-          <Button variant="ghost">Cancel Interview</Button>
+          <Button variant="ghost" disabled={isEvaluating}>
+            {evaluations ? 'Return to Report' : 'Cancel Interview'}
+          </Button>
         </Link>
-        {/* Answer submission/evaluation is out of scope for Task 10.4 */}
+        
+        {!evaluations && (
+          <Button 
+            variant="primary" 
+            onClick={handleSubmit} 
+            disabled={isEvaluating}
+          >
+            {isEvaluating ? (
+              <span className="flex items-center gap-2">
+                <span className="animate-spin h-4 w-4 border-b-2 border-white rounded-full"></span>
+                Evaluating answers...
+              </span>
+            ) : (
+              'Submit Answers'
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );
