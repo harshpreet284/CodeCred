@@ -149,24 +149,9 @@ export const validateQuestions = (questions, context) => {
       throw new AppError('Missing question text', 502, 'AI_GENERATION_FAILED');
     }
 
-    // 3. `technicalEntities` runtime shape
-    if (!Array.isArray(q.technicalEntities)) {
-      throw new AppError('Missing or invalid technicalEntities array', 502, 'GROUNDING_VALIDATION_FAILED');
-    }
-
     // 4. `targetEvidenceRefs` runtime shape
     if (!Array.isArray(q.targetEvidenceRefs) || q.targetEvidenceRefs.length === 0) {
       throw new AppError('Missing or empty targetEvidenceRefs', 502, 'GROUNDING_VALIDATION_FAILED');
-    }
-
-    // 5. Declared entity <-> question-text consistency
-    for (const entity of q.technicalEntities) {
-      if (typeof entity !== 'string') {
-        throw new AppError('Technical entity must be a string', 502, 'GROUNDING_VALIDATION_FAILED');
-      }
-      if (!textContainsEntity(q.text, entity)) {
-        throw new AppError(`Declared entity missing from text: ${entity}`, 502, 'GROUNDING_VALIDATION_FAILED');
-      }
     }
 
     // 6. Evidence reference validation
@@ -183,33 +168,55 @@ export const validateQuestions = (questions, context) => {
       extractTokensFromEvidence(evItem).forEach(t => supportedTokens.add(t));
     }
 
-    // 7. Declared entity <-> referenced evidence support
-    for (const entity of q.technicalEntities) {
-      const normalizedEntity = entity.toLowerCase();
-      if (!supportedExactEntities.has(normalizedEntity)) {
-        throw new AppError(`Declared entity not supported by references: ${entity}`, 502, 'GROUNDING_VALIDATION_FAILED');
-      }
-    }
-
-    // 8. Defense-in-depth detector
+    // 5. Deterministic Technical Entity Derivation & Evidence Support Validation
     const suspectEntities = extractSuspectEntities(q.text, globalVocab);
     for (const suspect of suspectEntities) {
       if (!supportedExactEntities.has(suspect)) {
-        throw new AppError(`Sanity detector flagged unsupported technical entity: ${suspect}`, 502, 'GROUNDING_VALIDATION_FAILED');
+        throw new AppError(`Declared entity not supported by references: ${suspect}`, 502, 'GROUNDING_VALIDATION_FAILED');
       }
     }
+    q.technicalEntities = Array.from(suspectEntities);
 
     // 9. V1 Topic Eligibility
     // If no entities declared, ensure the question still has broad token overlap with the references.
     if (q.technicalEntities.length === 0) {
       const questionTokens = new Set(extractTokens(q.text));
       let hasOverlap = false;
+      
+      // 1. Direct overlap
       for (const token of questionTokens) {
         if (supportedTokens.has(token) || supportedExactEntities.has(token)) {
           hasOverlap = true;
           break;
         }
       }
+
+      // 2. Transitive overlap via evidenceReasoning
+      if (!hasOverlap && q.evidenceReasoning) {
+        const reasoningTokens = new Set(extractTokens(q.evidenceReasoning));
+        
+        let reasoningOverlapsEvidence = false;
+        for (const token of reasoningTokens) {
+          if (supportedTokens.has(token) || supportedExactEntities.has(token)) {
+            reasoningOverlapsEvidence = true;
+            break;
+          }
+        }
+        
+        if (reasoningOverlapsEvidence) {
+          let textOverlapsReasoning = false;
+          for (const token of questionTokens) {
+            if (reasoningTokens.has(token)) {
+              textOverlapsReasoning = true;
+              break;
+            }
+          }
+          if (textOverlapsReasoning) {
+            hasOverlap = true;
+          }
+        }
+      }
+
       // Special allowance: if they ask about generic structural aspects and evidence includes path indicators,
       // it might fail simple token match. E.g. "How are components structured?" and ev has "src/components".
       // `extractTokens` handles standard tokenization, so "components" matches "components".

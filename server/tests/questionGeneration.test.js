@@ -64,13 +64,16 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
   };
 
   const wrapQuestions = (qList) => {
+    qList.forEach(q => {
+      if (!q.evidenceReasoning) q.evidenceReasoning = 'mocked reasoning';
+    });
     // Pad to 3 to pass the minimum count requirement if not enough are provided
     const uniquePads = ['alpha', 'bravo', 'charlie', 'delta', 'echo'];
     while (qList.length < 3) {
       qList.push({
+        evidenceReasoning: 'mocked justification',
         category: 'ecosystem', difficulty: 'beginner',
         text: `Padding question ${uniquePads[qList.length]} about javascript`,
-        technicalEntities: ['javascript'],
         targetEvidenceRefs: ['ev_001']
       });
     }
@@ -81,8 +84,7 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
     await assert.rejects(
       runTestWithMock(wrapQuestions([{
         category: 'implementation', difficulty: 'beginner',
-        text: 'How does Express work with Redis?',
-        technicalEntities: ['express', 'redis'],
+        text: 'How does Express work with `redis`?',
         targetEvidenceRefs: ['ev_002'] // ev_002 is express
       }])),
       (err) => /Declared entity not supported by references: redis/.test(err.message)
@@ -94,7 +96,6 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
       runTestWithMock(wrapQuestions([{
         category: 'implementation', difficulty: 'beginner',
         text: 'How does Express work with MongoDB?',
-        technicalEntities: ['express', 'mongodb'],
         targetEvidenceRefs: ['ev_002'] // ev_002 is express
       }])),
       (err) => /Declared entity not supported by references: mongodb/.test(err.message)
@@ -105,7 +106,6 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
     const { result } = await runTestWithMock(wrapQuestions([{
       category: 'implementation', difficulty: 'beginner',
       text: 'How does Express work with MongoDB?',
-      technicalEntities: ['express', 'mongodb'],
       targetEvidenceRefs: ['ev_002', 'ev_003'] // express and mongodb
     }]));
     assert.strictEqual(result.length, 3);
@@ -115,7 +115,6 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
     const { result } = await runTestWithMock(wrapQuestions([{
       category: 'implementation', difficulty: 'beginner',
       text: 'How does express route normal traffic?',
-      technicalEntities: ['express'],
       targetEvidenceRefs: ['ev_002']
     }]));
     assert.strictEqual(result.length, 3);
@@ -126,10 +125,9 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
       runTestWithMock(wrapQuestions([{
         category: 'implementation', difficulty: 'beginner',
         text: 'How does express use SuperCoolTech?',
-        technicalEntities: ['express'], // Omitted maliciously by Gemini
         targetEvidenceRefs: ['ev_002']
       }])),
-      (err) => /Sanity detector flagged unsupported technical entity: supercooltech/.test(err.message)
+      (err) => /Declared entity not supported by references: supercooltech/.test(err.message)
     );
   });
 
@@ -137,33 +135,28 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
     const { result } = await runTestWithMock(wrapQuestions([{
       category: 'implementation', difficulty: 'beginner',
       text: 'How does express work with redis?', // Lowercase, no backticks, omitted from entities
-      technicalEntities: ['express'],
       targetEvidenceRefs: ['ev_002']
     }]));
     assert.strictEqual(result.length, 3);
   });
 
-  test('CASE G: Declared entity not present in question text -> REJECT', async () => {
-    await assert.rejects(
-      runTestWithMock(wrapQuestions([{
-        category: 'implementation', difficulty: 'beginner',
-        text: 'How does express work?',
-        technicalEntities: ['express', 'mongodb'], // Declared but missing from text
-        targetEvidenceRefs: ['ev_002', 'ev_003']
-      }])),
-      (err) => /Declared entity missing from text: mongodb/.test(err.message)
-    );
+  test('CASE G: technicalEntities are deterministically derived and present in output', async () => {
+    const { result } = await runTestWithMock(wrapQuestions([{
+      category: 'implementation', difficulty: 'beginner',
+      text: 'How does express work with mongodb?',
+      targetEvidenceRefs: ['ev_002', 'ev_003']
+    }]));
+    assert.deepStrictEqual(result[0].technicalEntities.sort(), ['express', 'mongodb'].sort());
   });
 
-  test('CASE H: SQL declared but question contains only SQLAlchemy -> REJECT', async () => {
+  test('CASE H: Extracted unsupported entity -> REJECT', async () => {
     await assert.rejects(
       runTestWithMock(wrapQuestions([{
         category: 'implementation', difficulty: 'beginner',
-        text: 'How does SQLAlchemy perform queries?',
-        technicalEntities: ['sql'], 
+        text: 'How does typeORM perform queries?',
         targetEvidenceRefs: ['ev_004'] // SQL evidence
       }])),
-      (err) => /Declared entity missing from text: sql/.test(err.message)
+      (err) => /Declared entity not supported by references: typeorm/.test(err.message)
     );
   });
 
@@ -171,32 +164,30 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
     const { result } = await runTestWithMock(wrapQuestions([{
       category: 'implementation', difficulty: 'beginner',
       text: 'How do you run the jest tests here?', // 'jest' overlaps with ev_006
-      technicalEntities: [],
       targetEvidenceRefs: ['ev_006']
     }]));
     assert.strictEqual(result.length, 3);
   });
 
-  test('CASE J: Missing or invalid technicalEntities -> REJECT', async () => {
+  test('CASE J: Missing or empty targetEvidenceRefs -> REJECT', async () => {
     await assert.rejects(
       runTestWithMock(wrapQuestions([{
         category: 'implementation', difficulty: 'beginner',
-        text: 'How does express work?',
-        // missing technicalEntities
-        targetEvidenceRefs: ['ev_002']
+        text: 'How does express work?'
+        // missing targetEvidenceRefs
       }])),
-      (err) => /Missing or invalid technicalEntities/.test(err.message)
+      (err) => /Missing or empty targetEvidenceRefs/.test(err.message)
     );
   });
 
   test('CASE K: Duplicate questions above Jaccard threshold -> FILTER', async () => {
     const { result } = await runTestWithMock({
       questions: [
-        { category: 'ecosystem', difficulty: 'beginner', text: 'Why use javascript?', technicalEntities: ['javascript'], targetEvidenceRefs: ['ev_001'] },
-        { category: 'ecosystem', difficulty: 'beginner', text: 'Why use javascript?', technicalEntities: ['javascript'], targetEvidenceRefs: ['ev_001'] },
-        { category: 'ecosystem', difficulty: 'beginner', text: 'Why use javascript?', technicalEntities: ['javascript'], targetEvidenceRefs: ['ev_001'] },
-        { category: 'architecture', difficulty: 'intermediate', text: 'How to use express server?', technicalEntities: ['express'], targetEvidenceRefs: ['ev_002'] },
-        { category: 'database', difficulty: 'advanced', text: 'How to use mongodb?', technicalEntities: ['mongodb'], targetEvidenceRefs: ['ev_003'] }
+        { evidenceReasoning: 'mock', category: 'ecosystem', difficulty: 'beginner', text: 'Why use javascript?', targetEvidenceRefs: ['ev_001'] },
+        { evidenceReasoning: 'mock', category: 'ecosystem', difficulty: 'beginner', text: 'Why use javascript?', targetEvidenceRefs: ['ev_001'] },
+        { evidenceReasoning: 'mock', category: 'ecosystem', difficulty: 'beginner', text: 'Why use javascript?', targetEvidenceRefs: ['ev_001'] },
+        { evidenceReasoning: 'mock', category: 'architecture', difficulty: 'intermediate', text: 'How to use express server?', targetEvidenceRefs: ['ev_002'] },
+        { evidenceReasoning: 'mock', category: 'database', difficulty: 'advanced', text: 'How to use mongodb?', targetEvidenceRefs: ['ev_003'] }
       ]
     });
     // Filtered duplicates leaves exactly 3 distinct questions
@@ -207,9 +198,9 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
     await assert.rejects(
       runTestWithMock({
         questions: [
-          { category: 'ecosystem', difficulty: 'beginner', text: 'Why use javascript?', technicalEntities: ['javascript'], targetEvidenceRefs: ['ev_001'] },
-          { category: 'ecosystem', difficulty: 'beginner', text: 'Why use javascript?', technicalEntities: ['javascript'], targetEvidenceRefs: ['ev_001'] },
-          { category: 'architecture', difficulty: 'intermediate', text: 'How to use express?', technicalEntities: ['express'], targetEvidenceRefs: ['ev_002'] }
+          { evidenceReasoning: 'mock', category: 'ecosystem', difficulty: 'beginner', text: 'Why use javascript?', targetEvidenceRefs: ['ev_001'] },
+          { evidenceReasoning: 'mock', category: 'ecosystem', difficulty: 'beginner', text: 'Why use javascript?', targetEvidenceRefs: ['ev_001'] },
+          { evidenceReasoning: 'mock', category: 'architecture', difficulty: 'intermediate', text: 'How to use express?', targetEvidenceRefs: ['ev_002'] }
         ]
       }),
       (err) => /Batch filtered below 3 valid questions due to duplicates/.test(err.message)
@@ -221,7 +212,6 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
       runTestWithMock(wrapQuestions([{
         category: 'implementation', difficulty: 'beginner',
         text: 'How does express work?',
-        technicalEntities: ['express'],
         targetEvidenceRefs: ['ev_999'] // invalid
       }])),
       (err) => /Evidence reference not found: ev_999/.test(err.message)
@@ -233,10 +223,9 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
       runTestWithMock(wrapQuestions([{
         category: 'implementation', difficulty: 'beginner',
         text: 'How does express work with `mongodb`?', // backticks caught by sanity detector
-        technicalEntities: ['express'], // Omitted mongodb
         targetEvidenceRefs: ['ev_002'] // Only express ref
       }])),
-      (err) => /Sanity detector flagged unsupported technical entity: mongodb/.test(err.message)
+      (err) => /Declared entity not supported by references: mongodb/.test(err.message)
     );
   });
 
@@ -250,7 +239,7 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
           return { text: JSON.stringify(wrapQuestions([{
             category: 'implementation', difficulty: 'beginner',
             text: 'How does express work?',
-            technicalEntities: ['express'], targetEvidenceRefs: ['ev_002']
+            targetEvidenceRefs: ['ev_002']
           }])) };
         }
       }
@@ -272,7 +261,7 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
           return { text: JSON.stringify(wrapQuestions([{
             category: 'implementation', difficulty: 'beginner',
             text: 'How does express work?',
-            technicalEntities: ['express'], targetEvidenceRefs: ['ev_002']
+            targetEvidenceRefs: ['ev_002']
           }])) };
         }
       }
@@ -292,8 +281,8 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
           callCount++;
           return { text: JSON.stringify(wrapQuestions([{
             category: 'implementation', difficulty: 'beginner',
-            text: 'How does express work with redis?',
-            technicalEntities: ['express', 'redis'], targetEvidenceRefs: ['ev_002']
+            text: 'How does express work with `redis`?',
+            targetEvidenceRefs: ['ev_002']
           }])) };
         }
       }
@@ -313,7 +302,6 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
     const { result } = await runTestWithMock(wrapQuestions([{
       category: 'implementation', difficulty: 'beginner',
       text: 'How does express work?',
-      technicalEntities: ['express'],
       targetEvidenceRefs: ['ev_002']
     }]));
     assert.strictEqual(result[0].id, 'q_001');
@@ -335,9 +323,43 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
     const { result } = await runTestWithMock(wrapQuestions([{
       category: 'implementation', difficulty: 'beginner',
       text: 'How do Node.js, C++, and React Native work together?',
-      technicalEntities: ['Node.js', 'C++', 'React Native'],
       targetEvidenceRefs: ['ev_005', 'ev_006', 'ev_007']
     }]), mock);
     assert.strictEqual(result.length, 3);
   });
+
+  test('CASE U: Transitive grounding -> ACCEPT (Text lacks direct overlap but reasoning bridges it)', async () => {
+    const { result } = await runTestWithMock(wrapQuestions([{
+      evidenceReasoning: 'The repository uses express for routes.',
+      category: 'implementation', difficulty: 'beginner',
+      text: 'How are routes mounted?', // 'routes' overlaps with reasoning, 'express' overlaps with evidence
+      targetEvidenceRefs: ['ev_002']
+    }]));
+    assert.strictEqual(result.length, 3);
+  });
+
+  test('CASE V: Transitive grounding failure -> REJECT (Text lacks overlap with reasoning)', async () => {
+    await assert.rejects(
+      runTestWithMock(wrapQuestions([{
+        evidenceReasoning: 'The repository uses express.',
+        category: 'implementation', difficulty: 'beginner',
+        text: 'How are database migrations performed?',
+        targetEvidenceRefs: ['ev_002']
+      }])),
+      (err) => /Question lacks eligibility overlap with referenced evidence/.test(err.message)
+    );
+  });
+
+  test('CASE W: Transitive grounding failure -> REJECT (Reasoning lacks overlap with evidence, generic text)', async () => {
+    await assert.rejects(
+      runTestWithMock(wrapQuestions([{
+        evidenceReasoning: 'The repository is good for routing.', // does not overlap with 'express' evidence
+        category: 'implementation', difficulty: 'beginner',
+        text: 'How are routes mounted?', 
+        targetEvidenceRefs: ['ev_002']
+      }])),
+      (err) => /Question lacks eligibility overlap with referenced evidence/.test(err.message)
+    );
+  });
+
 });
