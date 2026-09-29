@@ -23,6 +23,13 @@ Output strictly valid JSON matching this schema:
       "feedback": "...",
       "unsupportedClaims": []
     }
+  ],
+  "knowledgeGaps": [
+    {
+      "topic": "...",
+      "gap": "...",
+      "recommendation": "..."
+    }
   ]
 }
 
@@ -31,6 +38,7 @@ Definitions:
 - completeness: (enum: "incomplete", "partial", "complete") Whether the answer adequately addresses the question given the relevant repository evidence.
 - unsupportedClaims: (array of strings) Repository-specific claims made by the user that are NOT supported by the supplied evidence. Use [] if none exist.
 - feedback: (string) Specific, evidence-grounded explanation of what was correct, incomplete, incorrect, or unsupported. Distinguish clearly between these states. Do not collapse them into a generic "wrong".
+- knowledgeGaps: (array of objects) Overarching knowledge gaps derived from the user's answers. Topics must be relevant to the repository evidence. Recommendations must be actionable, technically specific, and grounded in the available evidence. Do not invent unrelated technologies. If there are no meaningful gaps, return an empty array [].
 
 Rules:
 1. You MUST return exactly one evaluation for each questionId supplied in the data.
@@ -65,9 +73,22 @@ const evaluateWithRetry = async (promptString, maxRetries = 1) => {
                 required: ["questionId", "isCorrect", "completeness", "feedback", "unsupportedClaims"],
                 additionalProperties: false
               }
+            },
+            knowledgeGaps: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  topic: { type: "string" },
+                  gap: { type: "string" },
+                  recommendation: { type: "string" }
+                },
+                required: ["topic", "gap", "recommendation"],
+                additionalProperties: false
+              }
             }
           },
-          required: ["evaluations"],
+          required: ["evaluations", "knowledgeGaps"],
           additionalProperties: false
         }
       });
@@ -84,7 +105,10 @@ const evaluateWithRetry = async (promptString, maxRetries = 1) => {
       if (!parsed.evaluations) {
         throw new Error('Missing evaluations array');
       }
-      return parsed.evaluations;
+      if (!parsed.knowledgeGaps) {
+        throw new Error('Missing knowledgeGaps array');
+      }
+      return { rawEvaluations: parsed.evaluations, rawKnowledgeGaps: parsed.knowledgeGaps };
     } catch (parseError) {
       // Malformed / Schema failure
       if (attempt <= maxRetries) {
@@ -117,10 +141,10 @@ ${qnaString}
 `;
 
   // 4. Generate evaluations with Gemini (handles Transient/Schema retries)
-  const rawEvaluations = await evaluateWithRetry(promptString, 1);
+  const rawResponse = await evaluateWithRetry(promptString, 1);
 
   // 5. Rigid validation pipeline (Grounding/mapping failures throw without retry)
-  const orderedEvaluations = validateGeminiEvaluations(rawEvaluations, sessionData);
+  const { orderedEvaluations, validatedKnowledgeGaps } = validateGeminiEvaluations(rawResponse, sessionData);
 
-  return orderedEvaluations;
+  return { evaluations: orderedEvaluations, knowledgeGaps: validatedKnowledgeGaps };
 };

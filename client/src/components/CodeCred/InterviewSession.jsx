@@ -20,6 +20,7 @@ export function InterviewSession() {
   const [validationError, setValidationError] = useState('');
   // Evaluations keyed by question ID
   const [evaluations, setEvaluations] = useState(null);
+  const [knowledgeGaps, setKnowledgeGaps] = useState(null);
 
   const fetchQuestions = async () => {
     setIsLoading(true);
@@ -27,6 +28,7 @@ export function InterviewSession() {
     setEvaluationError('');
     setValidationError('');
     setEvaluations(null);
+    setKnowledgeGaps(null);
     try {
       const result = await generateQuestions(analysisId);
       setQuestions(result.questions || []);
@@ -48,6 +50,7 @@ export function InterviewSession() {
       setEvaluationError('');
       setValidationError('');
       setEvaluations(null);
+      setKnowledgeGaps(null);
       try {
         const result = await generateQuestions(analysisId);
         if (isMounted) {
@@ -106,6 +109,7 @@ export function InterviewSession() {
         evalMap[ev.questionId] = ev;
       });
       setEvaluations(evalMap);
+      setKnowledgeGaps(result.knowledgeGaps || []);
     } catch (err) {
       setEvaluationError(err.message || 'An error occurred during evaluation.');
     } finally {
@@ -238,8 +242,38 @@ export function InterviewSession() {
           );
         })}
       </div>
+
+      {knowledgeGaps && (
+        <Panel title="Knowledge Gaps & Study Recommendations" className="mt-8">
+          {knowledgeGaps.length === 0 ? (
+            <div className="text-zinc-300">
+              <p>Great job! No major knowledge gaps were identified based on your answers.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {knowledgeGaps.map((gap, index) => (
+                <div key={index} className="bg-zinc-900 border border-zinc-800 rounded-md p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-amber-400 bg-amber-400/10 border-amber-400/20">
+                      {gap.topic}
+                    </Badge>
+                  </div>
+                  <div>
+                    <h4 className="text-zinc-200 font-semibold mb-1">Identified Gap</h4>
+                    <p className="text-sm text-zinc-400 leading-relaxed">{gap.gap}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-emerald-400 font-semibold mb-1 text-sm">Recommendation</h4>
+                    <p className="text-sm text-emerald-200/80 leading-relaxed">{gap.recommendation}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Panel>
+      )}
       
-      <div className="pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-zinc-800">
+      <div className="pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-zinc-800 mt-8">
         <Link to={`/projects/${analysisId}`}>
           <Button variant="ghost" disabled={isEvaluating}>
             {evaluations ? 'Return to Report' : 'Cancel Interview'}

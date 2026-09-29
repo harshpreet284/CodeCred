@@ -88,9 +88,9 @@ export const evaluateAnswers = async (req, res, next) => {
     }
 
     const { evaluateSessionAnswers } = await import('../services/ai/answerEvaluator.js');
-    const evaluations = await evaluateSessionAnswers(analysis, sessionData);
+    const { evaluations, knowledgeGaps } = await evaluateSessionAnswers(analysis, sessionData);
     
-    sendSuccess(res, { evaluations }, 'Answers evaluated successfully', 200);
+    sendSuccess(res, { evaluations, knowledgeGaps }, 'Answers evaluated successfully', 200);
   } catch (error) {
     next(error);
   }

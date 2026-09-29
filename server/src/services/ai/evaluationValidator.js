@@ -69,13 +69,23 @@ export const validateSessionData = (sessionData, aiContext) => {
 
 /**
  * Validates the Gemini structured evaluation output and enforces strict 1:1 questionId mapping.
- * @param {Object} rawEvaluations - Parsed Gemini JSON
+ * @param {Object} rawResponse - Parsed Gemini JSON containing { rawEvaluations, rawKnowledgeGaps }
  * @param {Array} sessionData - Original requested sessionData
- * @returns {Array} - The strictly ordered evaluations
+ * @returns {Object} - Object with strictly ordered evaluations and validated knowledgeGaps
  */
-export const validateGeminiEvaluations = (rawEvaluations, sessionData) => {
+export const validateGeminiEvaluations = (rawResponse, sessionData) => {
+  if (!rawResponse || typeof rawResponse !== 'object') {
+    throw new AppError('Gemini output must be an object', 502, 'AI_GENERATION_FAILED');
+  }
+
+  const { rawEvaluations, rawKnowledgeGaps } = rawResponse;
+
   if (!rawEvaluations || !Array.isArray(rawEvaluations)) {
     throw new AppError('Gemini output must contain an evaluations array', 502, 'AI_GENERATION_FAILED');
+  }
+
+  if (!rawKnowledgeGaps || !Array.isArray(rawKnowledgeGaps)) {
+    throw new AppError('Gemini output must contain a knowledgeGaps array', 502, 'AI_GENERATION_FAILED');
   }
 
   const requestedIds = sessionData.map(item => item.question.id);
@@ -134,5 +144,26 @@ export const validateGeminiEvaluations = (rawEvaluations, sessionData) => {
   // Restore requested order
   const orderedEvaluations = requestedIds.map(id => evaluationMap.get(id));
 
-  return orderedEvaluations;
+  // Validate knowledgeGaps structurally
+  for (const gapItem of rawKnowledgeGaps) {
+    if (!gapItem || typeof gapItem !== 'object') {
+      throw new AppError('Malformed knowledge gap item', 502, 'AI_GENERATION_FAILED');
+    }
+
+    const { topic, gap, recommendation } = gapItem;
+
+    if (!topic || typeof topic !== 'string' || topic.trim() === '') {
+      throw new AppError('Knowledge gap missing or invalid topic', 502, 'AI_GENERATION_FAILED');
+    }
+
+    if (!gap || typeof gap !== 'string' || gap.trim() === '') {
+      throw new AppError('Knowledge gap missing or invalid gap description', 502, 'AI_GENERATION_FAILED');
+    }
+
+    if (!recommendation || typeof recommendation !== 'string' || recommendation.trim() === '') {
+      throw new AppError('Knowledge gap missing or invalid recommendation', 502, 'AI_GENERATION_FAILED');
+    }
+  }
+
+  return { orderedEvaluations, validatedKnowledgeGaps: rawKnowledgeGaps };
 };

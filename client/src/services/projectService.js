@@ -72,7 +72,7 @@ export async function evaluateAnswers(analysisId, sessionData) {
       throw new Error(data.error?.message || 'An unexpected error occurred evaluating answers.');
     }
     
-    if (!data.data || !Array.isArray(data.data.evaluations)) {
+    if (!data.data || !Array.isArray(data.data.evaluations) || !Array.isArray(data.data.knowledgeGaps)) {
       throw new Error('Malformed evaluation response from server.');
     }
     

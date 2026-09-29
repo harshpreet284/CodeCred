@@ -42,13 +42,25 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
   // A helper to quickly mock the Gemini response for tests
   const runTestWithMock = async (mockResponseObject, customAnalysis = null) => {
     let callCount = 0;
+    const generateFn = async (args) => {
+      callCount++;
+      if (mockResponseObject instanceof Error) throw mockResponseObject;
+      if (typeof mockResponseObject === 'function') {
+        const contentStr = args?.messages ? args.messages[args.messages.length - 1].content : args.contents;
+        return { text: mockResponseObject(contentStr) };
+      }
+      if (typeof mockResponseObject === 'string') return { text: mockResponseObject };
+      return { text: JSON.stringify(mockResponseObject) };
+    };
+
     setClient_forTesting({
-      models: {
-        generateContent: async () => {
-          callCount++;
-          if (mockResponseObject instanceof Error) throw mockResponseObject;
-          if (typeof mockResponseObject === 'string') return { text: mockResponseObject };
-          return { text: JSON.stringify(mockResponseObject) };
+      models: { generateContent: generateFn },
+      chat: {
+        completions: {
+          create: async (args) => {
+            const res = await generateFn(args);
+            return { choices: [{ message: { content: res.text } }] };
+          }
         }
       }
     });
@@ -231,16 +243,24 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
 
   test('CASE O: Transient Gemini failure -> exactly one retry', async () => {
     let callCount = 0;
+    const generateFn = async () => {
+      callCount++;
+      if (callCount === 1) throw new Error('Network error');
+      return { text: JSON.stringify(wrapQuestions([{
+        category: 'implementation', difficulty: 'beginner',
+        text: 'How does express work?',
+        targetEvidenceRefs: ['ev_002']
+      }])) };
+    };
+
     setClient_forTesting({
-      models: {
-        generateContent: async () => {
-          callCount++;
-          if (callCount === 1) throw new Error('Network error');
-          return { text: JSON.stringify(wrapQuestions([{
-            category: 'implementation', difficulty: 'beginner',
-            text: 'How does express work?',
-            targetEvidenceRefs: ['ev_002']
-          }])) };
+      models: { generateContent: generateFn },
+      chat: {
+        completions: {
+          create: async (args) => {
+            const res = await generateFn(args);
+            return { choices: [{ message: { content: res.text } }] };
+          }
         }
       }
     });
@@ -253,16 +273,24 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
 
   test('CASE P: Malformed Gemini output -> exactly one retry', async () => {
     let callCount = 0;
+    const generateFn = async () => {
+      callCount++;
+      if (callCount === 1) return { text: 'INVALID JSON' };
+      return { text: JSON.stringify(wrapQuestions([{
+        category: 'implementation', difficulty: 'beginner',
+        text: 'How does express work?',
+        targetEvidenceRefs: ['ev_002']
+      }])) };
+    };
+
     setClient_forTesting({
-      models: {
-        generateContent: async () => {
-          callCount++;
-          if (callCount === 1) return { text: 'INVALID JSON' };
-          return { text: JSON.stringify(wrapQuestions([{
-            category: 'implementation', difficulty: 'beginner',
-            text: 'How does express work?',
-            targetEvidenceRefs: ['ev_002']
-          }])) };
+      models: { generateContent: generateFn },
+      chat: {
+        completions: {
+          create: async (args) => {
+            const res = await generateFn(args);
+            return { choices: [{ message: { content: res.text } }] };
+          }
         }
       }
     });
@@ -275,15 +303,23 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
 
   test('CASE Q: Grounding failure -> zero retries', async () => {
     let callCount = 0;
+    const generateFn = async () => {
+      callCount++;
+      return { text: JSON.stringify(wrapQuestions([{
+        category: 'implementation', difficulty: 'beginner',
+        text: 'How does express work with `redis`?',
+        targetEvidenceRefs: ['ev_002']
+      }])) };
+    };
+
     setClient_forTesting({
-      models: {
-        generateContent: async () => {
-          callCount++;
-          return { text: JSON.stringify(wrapQuestions([{
-            category: 'implementation', difficulty: 'beginner',
-            text: 'How does express work with `redis`?',
-            targetEvidenceRefs: ['ev_002']
-          }])) };
+      models: { generateContent: generateFn },
+      chat: {
+        completions: {
+          create: async (args) => {
+            const res = await generateFn(args);
+            return { choices: [{ message: { content: res.text } }] };
+          }
         }
       }
     });
