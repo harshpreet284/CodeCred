@@ -23,7 +23,13 @@ Express API
 AI Service
       |
       v
-Gemini API
+AI Provider Factory
+      |
+      v
+Configured AI Provider
+      |
+      v
+Groq (current active provider)
 ```
 
 The backend is the trusted boundary between the browser and external services.
@@ -209,7 +215,7 @@ Secrets stay server-side.
 Expected environment configuration will include server-side values for external services.
 
 Never expose:
-- Gemini API key
+- AI provider API keys (Groq, Gemini)
 - private tokens
 - database credentials
 

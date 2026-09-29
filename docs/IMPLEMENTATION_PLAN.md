@@ -52,7 +52,7 @@ Build interview session interface.
 ## Phase 4 — AI
 
 ### Task 11
-Create backend AI service abstraction and secure Gemini integration.
+Create backend AI service abstraction and secure configurable AI-provider integration.
 
 ### Task 12
 Generate interview questions from structured repository evidence.

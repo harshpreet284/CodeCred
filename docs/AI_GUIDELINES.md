@@ -83,7 +83,7 @@ Never place API keys in:
 - committed source
 - client-side configuration
 
-Gemini requests happen server-side.
+AI requests happen server-side.
 
 ## Failure handling
 
@@ -119,7 +119,8 @@ The goal is interview readiness, not positive sentiment.
 
 ## Model Configuration
 
-The Gemini API model used for the free-tier implementation is:
-- Gemini 3.6 Flash
-- API model ID: gemini-3.6-flash
+The current active AI provider configuration is:
+- Provider: Groq (AI_PROVIDER=groq)
+- Model: openai/gpt-oss-120b (AI_MODEL=openai/gpt-oss-120b)
 
+Gemini remains available as an optional provider implementation when explicitly configured.
