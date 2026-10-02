@@ -117,7 +117,7 @@ test('Answer Evaluation Service (AI Logic)', async (t) => {
     assert.strictEqual(result.evaluations[0].questionId, 'q_001');
   });
 
-  await t.test('I. Invalid evidence reference -> reject before Gemini', async () => {
+  await t.test('I. Invalid evidence reference -> reject before AI provider', async () => {
     runTestWithMock({}); // should not be called
     try {
       await evaluateSessionAnswers(doc, [{ question: { ...validSessionData[0].question, targetEvidenceRefs: ['invalid_id'] }, answer: 'Exp' }]);
@@ -188,7 +188,7 @@ test('Answer Evaluation Service (AI Logic)', async (t) => {
     }
   });
 
-  await t.test('U/V/W. Raw MongoDB/Github/Source never reaches Gemini', async () => {
+  await t.test('U/V/W. Raw MongoDB/Github/Source never reaches AI provider', async () => {
     runTestWithMock((prompt) => {
       assert.ok(!prompt.includes(doc._id.toString()));
       assert.ok(!prompt.includes('__v'));

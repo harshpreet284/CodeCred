@@ -108,7 +108,7 @@ const generateQuestionsWithRetry = async (contextString, aiContext, maxRetries =
       if (attempt <= maxRetries) {
         continue;
       }
-      throw new AppError('Gemini API failure', 502, 'AI_GENERATION_FAILED');
+      throw new AppError('AI provider failure', 502, 'AI_GENERATION_FAILED');
     }
 
     try {
@@ -122,7 +122,7 @@ const generateQuestionsWithRetry = async (contextString, aiContext, maxRetries =
       if (attempt <= maxRetries) {
         continue;
       }
-      throw new AppError('Malformed Gemini output', 502, 'AI_GENERATION_FAILED');
+      throw new AppError('Malformed AI provider output', 502, 'AI_GENERATION_FAILED');
     }
   }
 };
@@ -174,7 +174,7 @@ export const generateInterviewQuestions = async (projectAnalysis) => {
   };
   const contextString = JSON.stringify(promptData, null, 2);
 
-  // 2. Generate questions with Gemini (handles Transient/Schema retries)
+  // 2. Generate questions with AI provider (handles Transient/Schema retries)
   const rawQuestions = await generateQuestionsWithRetry(contextString, aiContext, 1);
 
   // 3. Rigid validation pipeline (Grounding failures throw without retry)

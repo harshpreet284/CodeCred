@@ -1,6 +1,6 @@
 import { generateText } from './aiProvider.js';
 import { buildAIContext } from './contextBuilder.js';
-import { validateSessionData, validateGeminiEvaluations } from './evaluationValidator.js';
+import { validateSessionData, validateAIEvaluations } from './evaluationValidator.js';
 import { AppError } from '../../utils/AppError.js';
 
 const SYSTEM_INSTRUCTION = `
@@ -97,7 +97,7 @@ const evaluateWithRetry = async (promptString, maxRetries = 1) => {
       if (attempt <= maxRetries) {
         continue;
       }
-      throw new AppError('Gemini API failure', 502, 'AI_GENERATION_FAILED');
+      throw new AppError('AI provider failure', 502, 'AI_GENERATION_FAILED');
     }
 
     try {
@@ -114,7 +114,7 @@ const evaluateWithRetry = async (promptString, maxRetries = 1) => {
       if (attempt <= maxRetries) {
         continue;
       }
-      throw new AppError('Malformed Gemini output', 502, 'AI_GENERATION_FAILED');
+      throw new AppError('Malformed AI provider output', 502, 'AI_GENERATION_FAILED');
     }
   }
 };
@@ -140,11 +140,11 @@ ${qnaString}
 </UNTRUSTED_QNA_DATA>
 `;
 
-  // 4. Generate evaluations with Gemini (handles Transient/Schema retries)
+  // 4. Generate evaluations with AI provider (handles Transient/Schema retries)
   const rawResponse = await evaluateWithRetry(promptString, 1);
 
   // 5. Rigid validation pipeline (Grounding/mapping failures throw without retry)
-  const { orderedEvaluations, validatedKnowledgeGaps } = validateGeminiEvaluations(rawResponse, sessionData);
+  const { orderedEvaluations, validatedKnowledgeGaps } = validateAIEvaluations(rawResponse, sessionData);
 
   return { evaluations: orderedEvaluations, knowledgeGaps: validatedKnowledgeGaps };
 };

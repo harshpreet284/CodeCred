@@ -128,7 +128,7 @@ const buildContextMaps = (context) => {
 export const validateQuestions = (questions, context) => {
   // 1. Output shape validation
   if (!Array.isArray(questions)) {
-    throw new AppError('Gemini output must be an array of questions', 502, 'AI_GENERATION_FAILED');
+    throw new AppError('AI provider output must be an array of questions', 502, 'AI_GENERATION_FAILED');
   }
   if (questions.length < 3 || questions.length > 5) {
     throw new AppError(`Expected 3-5 questions, got ${questions.length}`, 502, 'AI_GENERATION_FAILED');

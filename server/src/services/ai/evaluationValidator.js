@@ -68,24 +68,24 @@ export const validateSessionData = (sessionData, aiContext) => {
 };
 
 /**
- * Validates the Gemini structured evaluation output and enforces strict 1:1 questionId mapping.
- * @param {Object} rawResponse - Parsed Gemini JSON containing { rawEvaluations, rawKnowledgeGaps }
+ * Validates the AI provider structured evaluation output and enforces strict 1:1 questionId mapping.
+ * @param {Object} rawResponse - Parsed AI provider JSON containing { rawEvaluations, rawKnowledgeGaps }
  * @param {Array} sessionData - Original requested sessionData
  * @returns {Object} - Object with strictly ordered evaluations and validated knowledgeGaps
  */
-export const validateGeminiEvaluations = (rawResponse, sessionData) => {
+export const validateAIEvaluations = (rawResponse, sessionData) => {
   if (!rawResponse || typeof rawResponse !== 'object') {
-    throw new AppError('Gemini output must be an object', 502, 'AI_GENERATION_FAILED');
+    throw new AppError('AI provider output must be an object', 502, 'AI_GENERATION_FAILED');
   }
 
   const { rawEvaluations, rawKnowledgeGaps } = rawResponse;
 
   if (!rawEvaluations || !Array.isArray(rawEvaluations)) {
-    throw new AppError('Gemini output must contain an evaluations array', 502, 'AI_GENERATION_FAILED');
+    throw new AppError('AI provider output must contain an evaluations array', 502, 'AI_GENERATION_FAILED');
   }
 
   if (!rawKnowledgeGaps || !Array.isArray(rawKnowledgeGaps)) {
-    throw new AppError('Gemini output must contain a knowledgeGaps array', 502, 'AI_GENERATION_FAILED');
+    throw new AppError('AI provider output must contain a knowledgeGaps array', 502, 'AI_GENERATION_FAILED');
   }
 
   const requestedIds = sessionData.map(item => item.question.id);
@@ -99,7 +99,7 @@ export const validateGeminiEvaluations = (rawResponse, sessionData) => {
 
   for (const evalItem of rawEvaluations) {
     if (!evalItem || typeof evalItem !== 'object') {
-      throw new AppError('Malformed evaluation item in Gemini output', 502, 'AI_GENERATION_FAILED');
+      throw new AppError('Malformed evaluation item in AI provider output', 502, 'AI_GENERATION_FAILED');
     }
 
     const { questionId, isCorrect, completeness, feedback, unsupportedClaims } = evalItem;

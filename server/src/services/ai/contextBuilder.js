@@ -2,7 +2,7 @@
  * contextBuilder.js
  * 
  * Transforms a persisted ProjectAnalysis document into a compact, deterministic
- * AI context for Gemini, stripping internal database artifacts while preserving
+ * AI context for the AI provider, stripping internal database artifacts while preserving
  * strict evidence provenance. Now extended for Task 10.3 to attach deterministic
  * evidence IDs.
  */

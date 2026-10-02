@@ -1,6 +1,6 @@
 import { sendSuccess } from '../utils/apiResponse.js';
 import { analyzeRepository, getAnalysis } from '../services/projectWorkflowService.js';
-import { generateInterviewQuestions } from '../services/ai/questionGenerator.js';
+import { createInterviewSession, getInterviewSession, evaluateInterviewSession } from '../services/interviewSessionService.js';
 import { AppError } from '../utils/AppError.js';
 
 export const analyzeProject = async (req, res, next) => {
@@ -43,7 +43,6 @@ export const createInterview = async (req, res, next) => {
       throw new AppError('Analysis ID is required', 400, 'INVALID_INPUT');
     }
 
-    const { createInterviewSession } = await import('../services/interviewSessionService.js');
     const session = await createInterviewSession(analysisId);
     
     sendSuccess(res, session, 'Interview session created successfully', 201);
@@ -60,7 +59,6 @@ export const getInterview = async (req, res, next) => {
       throw new AppError('Analysis ID and Session ID are required', 400, 'INVALID_INPUT');
     }
 
-    const { getInterviewSession } = await import('../services/interviewSessionService.js');
     const session = await getInterviewSession(analysisId, sessionId);
     
     sendSuccess(res, session, 'Interview session retrieved successfully', 200);
@@ -90,7 +88,6 @@ export const evaluateInterview = async (req, res, next) => {
       throw new AppError('sessionData array length must be between 1 and 10', 400, 'INVALID_INPUT');
     }
 
-    const { evaluateInterviewSession } = await import('../services/interviewSessionService.js');
     const session = await evaluateInterviewSession(analysisId, sessionId, sessionData);
     
     sendSuccess(res, session, 'Answers evaluated successfully', 200);

@@ -39,7 +39,7 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
     }
   });
 
-  // A helper to quickly mock the Gemini response for tests
+  // A helper to quickly mock the AI provider response for tests
   const runTestWithMock = async (mockResponseObject, customAnalysis = null) => {
     let callCount = 0;
     const generateFn = async (args) => {
@@ -241,7 +241,7 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
     );
   });
 
-  test('CASE O: Transient Gemini failure -> exactly one retry', async () => {
+  test('CASE O: Transient AI provider failure -> exactly one retry', async () => {
     let callCount = 0;
     const generateFn = async () => {
       callCount++;
@@ -271,7 +271,7 @@ describe('Task 10.3 Adversarial Grounding Tests', () => {
     assert.strictEqual(res.length, 3);
   });
 
-  test('CASE P: Malformed Gemini output -> exactly one retry', async () => {
+  test('CASE P: Malformed AI provider output -> exactly one retry', async () => {
     let callCount = 0;
     const generateFn = async () => {
       callCount++;
