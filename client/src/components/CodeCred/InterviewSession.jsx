@@ -4,6 +4,9 @@ import { getInterview, evaluateAnswers } from '../../services/projectService';
 import { Panel } from '../ui/Panel';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
+import { Skeleton } from '../ui/Skeleton';
+import { EmptyState } from '../ui/EmptyState';
+import { useToast } from '../ui/Toast';
 
 export function InterviewSession() {
   const { analysisId, sessionId } = useParams();
@@ -13,8 +16,7 @@ export function InterviewSession() {
   
   const [answers, setAnswers] = useState({});
   const [isEvaluating, setIsEvaluating] = useState(false);
-  const [evaluationError, setEvaluationError] = useState('');
-  const [validationError, setValidationError] = useState('');
+  const { showToast } = useToast();
 
   const [evaluations, setEvaluations] = useState(null);
   const [knowledgeGaps, setKnowledgeGaps] = useState(null);
@@ -66,13 +68,10 @@ export function InterviewSession() {
   };
 
   const handleSubmit = async () => {
-    setValidationError('');
-    setEvaluationError('');
-
     for (const q of questions) {
       const ans = answers[q.id];
       if (!ans || ans.trim() === '') {
-        setValidationError('Please answer all questions before submitting.');
+        showToast('Please answer all questions before submitting.', 'error');
         return;
       }
     }
@@ -94,7 +93,7 @@ export function InterviewSession() {
       setKnowledgeGaps(result.knowledgeGaps || []);
       setSessionStatus('completed');
     } catch (err) {
-      setEvaluationError(err.message || 'An error occurred during evaluation.');
+      showToast(err.message || 'An error occurred during evaluation.', 'error');
     } finally {
       setIsEvaluating(false);
     }
@@ -102,43 +101,42 @@ export function InterviewSession() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-zinc-400">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mb-4"></div>
-        <p>Generating questions based on repository evidence...</p>
+      <div className="space-y-8 max-w-3xl mx-auto">
+        <div className="border-b border-zinc-800 pb-6">
+          <Skeleton className="h-10 w-2/3 mb-2" />
+          <Skeleton className="h-5 w-1/2" />
+        </div>
+        <div className="space-y-6">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-xl mx-auto py-12 text-center">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8">
-          <h2 className="text-xl font-bold text-zinc-100 mb-2">Generation Failed</h2>
-          <p className="text-zinc-400 mb-6">{error}</p>
-          <div className="flex justify-center gap-4">
-            <Link to={`/projects/${analysisId}`}>
-              <Button variant="secondary">Back to Report</Button>
-            </Link>
-            <Button variant="primary" onClick={fetchSession}>Retry</Button>
-          </div>
-        </div>
-      </div>
+      <EmptyState
+        title="Session Load Failed"
+        description={error}
+        actionText="Back to Report"
+        actionTo={`/projects/${analysisId}`}
+      />
     );
   }
 
   if (!questions || questions.length === 0) {
     return (
-      <div className="max-w-xl mx-auto py-12 text-center">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8">
-          <h2 className="text-xl font-bold text-zinc-100 mb-2">No Questions Generated</h2>
-          <p className="text-zinc-400 mb-6">The analysis did not yield any specific questions.</p>
-          <Link to={`/projects/${analysisId}`}>
-            <Button variant="primary">Back to Report</Button>
-          </Link>
-        </div>
-      </div>
+      <EmptyState
+        title="No Questions Generated"
+        description="The analysis did not yield any specific questions."
+        actionText="Back to Report"
+        actionTo={`/projects/${analysisId}`}
+      />
     );
   }
+
 
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
@@ -148,21 +146,6 @@ export function InterviewSession() {
           Please answer the following questions based on your repository implementation.
         </p>
       </div>
-
-      {validationError && (
-        <div className="bg-amber-900/30 border border-amber-800/50 text-amber-200 px-4 py-3 rounded-md text-sm">
-          {validationError}
-        </div>
-      )}
-
-      {evaluationError && (
-        <div className="bg-red-900/30 border border-red-800/50 p-4 rounded-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="text-red-200 text-sm">{evaluationError}</div>
-          <Button variant="primary" onClick={handleSubmit} disabled={isEvaluating}>
-            Retry Submission
-          </Button>
-        </div>
-      )}
 
       <div className="space-y-6">
         {questions.map((q, index) => {

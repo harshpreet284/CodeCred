@@ -5,6 +5,9 @@ import { getProjectAnalysis, createInterview } from '../../services/projectServi
 import { Panel } from '../ui/Panel';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
+import { Skeleton } from '../ui/Skeleton';
+import { EmptyState } from '../ui/EmptyState';
+import { useToast } from '../ui/Toast';
 
 /**
  * Renders a list of evidence indicator objects from the deterministic analysis.
@@ -68,14 +71,15 @@ export function EvidenceReport() {
   const [error, setError] = useState('');
   const [isCreatingInterview, setIsCreatingInterview] = useState(false);
 
+  const { showToast } = useToast();
+
   const handleStartInterview = async () => {
     setIsCreatingInterview(true);
-    setError('');
     try {
       const session = await createInterview(analysisId);
       navigate(`/projects/${analysisId}/interviews/${session.id}`);
     } catch (err) {
-      setError(err.message || 'Failed to start interview.');
+      showToast(err.message || 'Failed to start interview.', 'error');
       setIsCreatingInterview(false);
     }
   };
@@ -107,24 +111,32 @@ export function EvidenceReport() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-zinc-400">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mb-4"></div>
-        <p>Retrieving Snapshot...</p>
+      <div className="space-y-8">
+        <div className="border-b border-zinc-800 pb-6">
+          <Skeleton className="h-10 w-3/4 mb-4" />
+          <Skeleton className="h-6 w-1/2 mb-4" />
+          <div className="flex gap-2">
+            <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-6 w-24" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+        <Skeleton className="h-48 w-full" />
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="max-w-xl mx-auto py-12 text-center">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8">
-          <h2 className="text-xl font-bold text-zinc-100 mb-2">Report Not Found</h2>
-          <p className="text-zinc-400 mb-6">{error || 'The analysis you requested does not exist.'}</p>
-          <Link to="/">
-            <Button variant="primary">Submit a new repository</Button>
-          </Link>
-        </div>
-      </div>
+      <EmptyState
+        title="Report Not Found"
+        description={error || 'The analysis you requested does not exist.'}
+        actionText="Submit a new repository"
+        actionTo="/"
+      />
     );
   }
 
