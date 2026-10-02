@@ -2,9 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { evaluateAnswers } from '../src/controllers/projectController.js';
+import { evaluateSessionAnswers } from '../src/services/ai/answerEvaluator.js';
 import { setClient_forTesting, resetClient_forTesting } from '../src/services/ai/aiProvider.js';
-// We must import the model to create data for the dynamic import in controller
 import '../src/models/ProjectAnalysis.js'; 
 
 let mongoServer;
@@ -36,31 +35,6 @@ const runTestWithMock = (mockResponseObject) => {
   });
 };
 
-const mockReq = (body, analysisId) => ({
-  params: { analysisId: analysisId || 'fake-id' },
-  body
-});
-
-const mockRes = () => {
-  const res = {
-    status: function (code) {
-      this.statusCode = code;
-      return this;
-    },
-    json: function (data) {
-      this.data = data;
-      return this;
-    }
-  };
-  return res;
-};
-
-const mockNext = () => {
-  let error = null;
-  const nextFn = (err) => { error = err; };
-  return { nextFn, getError: () => error };
-};
-
 const validSessionData = [
   {
     question: {
@@ -72,8 +46,8 @@ const validSessionData = [
   }
 ];
 
-test('Answer Evaluation Integration', async (t) => {
-  let validAnalysisId;
+test('Answer Evaluation Service (AI Logic)', async (t) => {
+  let doc;
 
   t.before(async () => {
     mongoServer = await MongoMemoryServer.create();
@@ -90,12 +64,10 @@ test('Answer Evaluation Integration', async (t) => {
     resetClient_forTesting();
     aiCallCount = 0;
 
-    // Create a fresh analysis doc for each test
     const Model = mongoose.model('ProjectAnalysis');
     await Model.deleteMany({});
     
-    // We create a doc that will yield 'ev_001' for 'Express'
-    const doc = await Model.create({
+    doc = await Model.create({
       repository: { owner: 'owner', name: 'repo', fullName: 'owner/repo', defaultBranch: 'main' },
       summary: { 
         languages: [], 
@@ -112,35 +84,28 @@ test('Answer Evaluation Integration', async (t) => {
       deployment: { indicators: [] },
       analysisMetadata: { analysisVersion: '1.0.0', limitations: [] }
     });
-    validAnalysisId = doc._id.toString();
   });
 
   t.afterEach(() => {
     resetClient_forTesting();
   });
 
-  await t.test('C/D. Missing/Malformed sessionData -> 400', async () => {
-    const { nextFn, getError } = mockNext();
-    await evaluateAnswers(mockReq({}, validAnalysisId), mockRes(), nextFn);
-    assert.strictEqual(getError().statusCode, 400);
-
-    const { nextFn: nextFn2, getError: getError2 } = mockNext();
-    await evaluateAnswers(mockReq({ sessionData: "not array" }, validAnalysisId), mockRes(), nextFn2);
-    assert.strictEqual(getError2().statusCode, 400);
-  });
-
   await t.test('E. Missing question -> 400', async () => {
-    const { nextFn, getError } = mockNext();
-    await evaluateAnswers(mockReq({ sessionData: [{ answer: 'test' }] }, validAnalysisId), mockRes(), nextFn);
-    assert.strictEqual(getError().statusCode, 400);
+    try {
+      await evaluateSessionAnswers(doc, [{ answer: 'test' }]);
+      assert.fail('Should have thrown');
+    } catch (err) {
+      assert.strictEqual(err.statusCode, 400);
+    }
   });
 
   await t.test('F/G. Missing or whitespace answer -> 400', async () => {
-    const { nextFn, getError } = mockNext();
-    await evaluateAnswers(mockReq({
-      sessionData: [{ question: validSessionData[0].question, answer: '   ' }]
-    }, validAnalysisId), mockRes(), nextFn);
-    assert.strictEqual(getError().statusCode, 400);
+    try {
+      await evaluateSessionAnswers(doc, [{ question: validSessionData[0].question, answer: '   ' }]);
+      assert.fail('Should have thrown');
+    } catch (err) {
+      assert.strictEqual(err.statusCode, 400);
+    }
   });
 
   await t.test('H. Short non-empty answer reaches evaluation', async () => {
@@ -148,22 +113,19 @@ test('Answer Evaluation Integration', async (t) => {
       evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }],
       knowledgeGaps: []
     });
-    const res = mockRes();
-    const { nextFn } = mockNext();
-    await evaluateAnswers(mockReq({
-      sessionData: [{ question: validSessionData[0].question, answer: 'Exp' }]
-    }, validAnalysisId), res, nextFn);
-    assert.strictEqual(res.statusCode, 200);
+    const result = await evaluateSessionAnswers(doc, [{ question: validSessionData[0].question, answer: 'Exp' }]);
+    assert.strictEqual(result.evaluations[0].questionId, 'q_001');
   });
 
   await t.test('I. Invalid evidence reference -> reject before Gemini', async () => {
     runTestWithMock({}); // should not be called
-    const { nextFn, getError } = mockNext();
-    await evaluateAnswers(mockReq({
-      sessionData: [{ question: { ...validSessionData[0].question, targetEvidenceRefs: ['invalid_id'] }, answer: 'Exp' }]
-    }, validAnalysisId), mockRes(), nextFn);
-    assert.strictEqual(getError().statusCode, 400);
-    assert.strictEqual(aiCallCount, 0);
+    try {
+      await evaluateSessionAnswers(doc, [{ question: { ...validSessionData[0].question, targetEvidenceRefs: ['invalid_id'] }, answer: 'Exp' }]);
+      assert.fail('Should have thrown');
+    } catch (err) {
+      assert.strictEqual(err.statusCode, 400);
+      assert.strictEqual(aiCallCount, 0);
+    }
   });
 
   await t.test('A/L/M/Y. Valid single evaluation mapping & order reconstruction', async () => {
@@ -175,19 +137,13 @@ test('Answer Evaluation Integration', async (t) => {
       knowledgeGaps: []
     });
     
-    // Simulate multi-question request. Note: Context provides ev_001 for both for simplicity.
-    const req = mockReq({
-      sessionData: [
+    const result = await evaluateSessionAnswers(doc, [
         validSessionData[0],
         { question: { id: 'q_002', text: 'Q2', targetEvidenceRefs: ['ev_001'] }, answer: 'A2' }
-      ]
-    }, validAnalysisId);
-    const res = mockRes();
-    await evaluateAnswers(req, res, mockNext().nextFn);
+    ]);
     
-    assert.strictEqual(res.statusCode, 200);
-    assert.strictEqual(res.data.data.evaluations[0].questionId, 'q_001');
-    assert.strictEqual(res.data.data.evaluations[1].questionId, 'q_002');
+    assert.strictEqual(result.evaluations[0].questionId, 'q_001');
+    assert.strictEqual(result.evaluations[1].questionId, 'q_002');
   });
 
   await t.test('J/K/L. Unknown, Omitted, Duplicate questionId -> reject with 0 retries', async () => {
@@ -205,11 +161,13 @@ test('Answer Evaluation Integration', async (t) => {
 
     for (const invalidOutput of cases) {
       runTestWithMock(invalidOutput);
-      const { nextFn, getError } = mockNext();
-      await evaluateAnswers(mockReq({ sessionData: validSessionData }, validAnalysisId), mockRes(), nextFn);
-      
-      assert.strictEqual(getError().statusCode, 502);
-      assert.strictEqual(getError().code, 'AI_GROUNDING_FAILED');
+      try {
+        await evaluateSessionAnswers(doc, validSessionData);
+        assert.fail('Should have thrown');
+      } catch (err) {
+        assert.strictEqual(err.statusCode, 502);
+        assert.strictEqual(err.code, 'AI_GROUNDING_FAILED');
+      }
     }
   });
 
@@ -221,16 +179,18 @@ test('Answer Evaluation Integration', async (t) => {
       return '{ malformed json';
     });
 
-    const { nextFn, getError } = mockNext();
-    await evaluateAnswers(mockReq({ sessionData: validSessionData }, validAnalysisId), mockRes(), nextFn);
-    
-    assert.strictEqual(calls, 2);
-    assert.strictEqual(getError().code, 'AI_GENERATION_FAILED');
+    try {
+      await evaluateSessionAnswers(doc, validSessionData);
+      assert.fail('Should have thrown');
+    } catch (err) {
+      assert.strictEqual(calls, 2);
+      assert.strictEqual(err.code, 'AI_GENERATION_FAILED');
+    }
   });
 
   await t.test('U/V/W. Raw MongoDB/Github/Source never reaches Gemini', async () => {
     runTestWithMock((prompt) => {
-      assert.ok(!prompt.includes(validAnalysisId));
+      assert.ok(!prompt.includes(doc._id.toString()));
       assert.ok(!prompt.includes('__v'));
       return JSON.stringify({
         evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }],
@@ -238,84 +198,36 @@ test('Answer Evaluation Integration', async (t) => {
       });
     });
 
-    const res = mockRes();
-    await evaluateAnswers(mockReq({ sessionData: validSessionData }, validAnalysisId), res, mockNext().nextFn);
-    assert.strictEqual(res.statusCode, 200);
+    const result = await evaluateSessionAnswers(doc, validSessionData);
+    assert.ok(result);
   });
 
   await t.test('Knowledge Gaps Validation (A-I)', async () => {
-    const req = mockReq({ sessionData: validSessionData }, validAnalysisId);
-    
-    // A/B. Valid/Empty knowledgeGaps array -> accepted
     runTestWithMock({
       evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }],
       knowledgeGaps: [{ topic: 'A', gap: 'B', recommendation: 'C' }]
     });
-    const res1 = mockRes();
-    await evaluateAnswers(req, res1, mockNext().nextFn);
-    assert.strictEqual(res1.statusCode, 200);
-    assert.strictEqual(res1.data.data.knowledgeGaps.length, 1);
+    const result1 = await evaluateSessionAnswers(doc, validSessionData);
+    assert.strictEqual(result1.knowledgeGaps.length, 1);
 
-    // C. missing
-    runTestWithMock({
-      evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }]
-    });
-    const { nextFn: fnC, getError: errC } = mockNext();
-    await evaluateAnswers(req, mockRes(), fnC);
-    assert.strictEqual(errC().statusCode, 502);
+    const failCases = [
+      { evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }] }, // missing
+      { evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }], knowledgeGaps: "not-an-array" }, // not array
+      { evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }], knowledgeGaps: [{ gap: 'B', recommendation: 'C' }] }, // missing topic
+      { evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }], knowledgeGaps: [{ topic: 'A', recommendation: 'C' }] }, // missing gap
+      { evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }], knowledgeGaps: [{ topic: 'A', gap: 'B' }] }, // missing recommendation
+      { evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }], knowledgeGaps: [{ topic: 123, gap: 'B', recommendation: 'C' }] }, // not strings
+      { evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }], knowledgeGaps: [{ topic: '  ', gap: 'B', recommendation: 'C' }] } // empty whitespace
+    ];
 
-    // D. not array
-    runTestWithMock({
-      evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }],
-      knowledgeGaps: "not-an-array"
-    });
-    const { nextFn: fnD, getError: errD } = mockNext();
-    await evaluateAnswers(req, mockRes(), fnD);
-    assert.strictEqual(errD().statusCode, 502);
-
-    // E. missing topic
-    runTestWithMock({
-      evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }],
-      knowledgeGaps: [{ gap: 'B', recommendation: 'C' }]
-    });
-    const { nextFn: fnE, getError: errE } = mockNext();
-    await evaluateAnswers(req, mockRes(), fnE);
-    assert.strictEqual(errE().statusCode, 502);
-
-    // F. missing gap
-    runTestWithMock({
-      evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }],
-      knowledgeGaps: [{ topic: 'A', recommendation: 'C' }]
-    });
-    const { nextFn: fnF, getError: errF } = mockNext();
-    await evaluateAnswers(req, mockRes(), fnF);
-    assert.strictEqual(errF().statusCode, 502);
-
-    // G. missing recommendation
-    runTestWithMock({
-      evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }],
-      knowledgeGaps: [{ topic: 'A', gap: 'B' }]
-    });
-    const { nextFn: fnG, getError: errG } = mockNext();
-    await evaluateAnswers(req, mockRes(), fnG);
-    assert.strictEqual(errG().statusCode, 502);
-
-    // H. not strings
-    runTestWithMock({
-      evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }],
-      knowledgeGaps: [{ topic: 123, gap: 'B', recommendation: 'C' }]
-    });
-    const { nextFn: fnH, getError: errH } = mockNext();
-    await evaluateAnswers(req, mockRes(), fnH);
-    assert.strictEqual(errH().statusCode, 502);
-
-    // I. empty whitespace
-    runTestWithMock({
-      evaluations: [{ questionId: 'q_001', isCorrect: true, completeness: 'complete', feedback: 'ok', unsupportedClaims: [] }],
-      knowledgeGaps: [{ topic: '  ', gap: 'B', recommendation: 'C' }]
-    });
-    const { nextFn: fnI, getError: errI } = mockNext();
-    await evaluateAnswers(req, mockRes(), fnI);
-    assert.strictEqual(errI().statusCode, 502);
+    for (const failCase of failCases) {
+      runTestWithMock(failCase);
+      try {
+        await evaluateSessionAnswers(doc, validSessionData);
+        assert.fail('Should have thrown');
+      } catch (err) {
+        assert.strictEqual(err.statusCode, 502);
+      }
+    }
   });
 });

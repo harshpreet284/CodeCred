@@ -44,7 +44,7 @@ function App() {
         <Route path='/' element={<CodeCredLayout />}>
           <Route index element={<Shell />} />
           <Route path='projects/:analysisId' element={<EvidenceReport />} />
-          <Route path='projects/:analysisId/interview' element={<InterviewSession />} />
+          <Route path='projects/:analysisId/interviews/:sessionId' element={<InterviewSession />} />
         </Route>
         <Route path='/legacy/*' element={<LegacyApp />} />
       </Routes>

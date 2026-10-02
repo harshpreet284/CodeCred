@@ -35,7 +35,7 @@ export const getProjectAnalysis = async (req, res, next) => {
   }
 };
 
-export const generateQuestions = async (req, res, next) => {
+export const createInterview = async (req, res, next) => {
   try {
     const { analysisId } = req.params;
     
@@ -43,27 +43,38 @@ export const generateQuestions = async (req, res, next) => {
       throw new AppError('Analysis ID is required', 400, 'INVALID_INPUT');
     }
 
-    // Need raw model for context building, safeResponseData is DTO
-    const { getAnalysisById } = await import('../services/projectAnalysisService.js');
-    const analysis = await getAnalysisById(analysisId);
+    const { createInterviewSession } = await import('../services/interviewSessionService.js');
+    const session = await createInterviewSession(analysisId);
     
-    if (!analysis) {
-      throw new AppError('Analysis not found', 404, 'NOT_FOUND');
-    }
-
-    const questions = await generateInterviewQuestions(analysis);
-    
-    sendSuccess(res, { questions }, 'Questions generated successfully', 200);
+    sendSuccess(res, session, 'Interview session created successfully', 201);
   } catch (error) {
     next(error);
   }
 };
-export const evaluateAnswers = async (req, res, next) => {
+
+export const getInterview = async (req, res, next) => {
   try {
-    const { analysisId } = req.params;
+    const { analysisId, sessionId } = req.params;
+
+    if (!analysisId || !sessionId) {
+      throw new AppError('Analysis ID and Session ID are required', 400, 'INVALID_INPUT');
+    }
+
+    const { getInterviewSession } = await import('../services/interviewSessionService.js');
+    const session = await getInterviewSession(analysisId, sessionId);
     
-    if (!analysisId) {
-      throw new AppError('Analysis ID is required', 400, 'INVALID_INPUT');
+    sendSuccess(res, session, 'Interview session retrieved successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const evaluateInterview = async (req, res, next) => {
+  try {
+    const { analysisId, sessionId } = req.params;
+    
+    if (!analysisId || !sessionId) {
+      throw new AppError('Analysis ID and Session ID are required', 400, 'INVALID_INPUT');
     }
 
     const { sessionData } = req.body;
@@ -79,18 +90,10 @@ export const evaluateAnswers = async (req, res, next) => {
       throw new AppError('sessionData array length must be between 1 and 10', 400, 'INVALID_INPUT');
     }
 
-    // Need raw model for context building
-    const { getAnalysisById } = await import('../services/projectAnalysisService.js');
-    const analysis = await getAnalysisById(analysisId);
+    const { evaluateInterviewSession } = await import('../services/interviewSessionService.js');
+    const session = await evaluateInterviewSession(analysisId, sessionId, sessionData);
     
-    if (!analysis) {
-      throw new AppError('Analysis not found', 404, 'NOT_FOUND');
-    }
-
-    const { evaluateSessionAnswers } = await import('../services/ai/answerEvaluator.js');
-    const { evaluations, knowledgeGaps } = await evaluateSessionAnswers(analysis, sessionData);
-    
-    sendSuccess(res, { evaluations, knowledgeGaps }, 'Answers evaluated successfully', 200);
+    sendSuccess(res, session, 'Answers evaluated successfully', 200);
   } catch (error) {
     next(error);
   }

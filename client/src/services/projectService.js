@@ -35,9 +35,9 @@ export async function getProjectAnalysis(analysisId) {
   }
 }
 
-export async function generateQuestions(analysisId) {
+export async function createInterview(analysisId) {
   try {
-    const response = await fetch(`/api/projects/${analysisId}/questions`, {
+    const response = await fetch(`/api/projects/${analysisId}/interviews`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -47,7 +47,7 @@ export async function generateQuestions(analysisId) {
     const data = await response.json();
     
     if (!response.ok || !data.success) {
-      throw new Error(data.error?.message || 'An unexpected error occurred generating questions.');
+      throw new Error(data.error?.message || 'An unexpected error occurred creating the interview.');
     }
 
     return data.data;
@@ -56,9 +56,24 @@ export async function generateQuestions(analysisId) {
   }
 }
 
-export async function evaluateAnswers(analysisId, sessionData) {
+export async function getInterview(analysisId, sessionId) {
   try {
-    const response = await fetch(`/api/projects/${analysisId}/evaluate`, {
+    const response = await fetch(`/api/projects/${analysisId}/interviews/${sessionId}`);
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || 'An unexpected error occurred retrieving the interview.');
+    }
+
+    return data.data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function evaluateAnswers(analysisId, sessionId, sessionData) {
+  try {
+    const response = await fetch(`/api/projects/${analysisId}/interviews/${sessionId}/evaluate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -72,14 +87,8 @@ export async function evaluateAnswers(analysisId, sessionData) {
       throw new Error(data.error?.message || 'An unexpected error occurred evaluating answers.');
     }
     
-    if (!data.data || !Array.isArray(data.data.evaluations) || !Array.isArray(data.data.knowledgeGaps)) {
+    if (!data.data || !Array.isArray(data.data.evaluations)) {
       throw new Error('Malformed evaluation response from server.');
-    }
-    
-    for (const ev of data.data.evaluations) {
-      if (!ev.questionId) {
-        throw new Error('Malformed evaluation response: missing questionId.');
-      }
     }
 
     return data.data;

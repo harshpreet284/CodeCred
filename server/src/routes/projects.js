@@ -1,12 +1,13 @@
 import { Router } from 'express';
-import { analyzeProject, getProjectAnalysis, generateQuestions, evaluateAnswers } from '../controllers/projectController.js';
+import { analyzeProject, getProjectAnalysis, createInterview, getInterview, evaluateInterview } from '../controllers/projectController.js';
 
 const router = Router();
 
 router.post('/analyze', analyzeProject);
 router.get('/:analysisId', getProjectAnalysis);
 
-router.post('/:analysisId/questions', generateQuestions);
-router.post('/:analysisId/evaluate', evaluateAnswers);
+router.post('/:analysisId/interviews', createInterview);
+router.get('/:analysisId/interviews/:sessionId', getInterview);
+router.post('/:analysisId/interviews/:sessionId/evaluate', evaluateInterview);
 
 export default router;

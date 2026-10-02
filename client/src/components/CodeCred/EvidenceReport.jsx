@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getProjectAnalysis } from '../../services/projectService';
+import { useNavigate } from 'react-router-dom';
+import { getProjectAnalysis, createInterview } from '../../services/projectService';
 import { Panel } from '../ui/Panel';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -61,9 +62,23 @@ function EvidenceSection({ label, indicators }) {
 
 export function EvidenceReport() {
   const { analysisId } = useParams();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isCreatingInterview, setIsCreatingInterview] = useState(false);
+
+  const handleStartInterview = async () => {
+    setIsCreatingInterview(true);
+    setError('');
+    try {
+      const session = await createInterview(analysisId);
+      navigate(`/projects/${analysisId}/interviews/${session.id}`);
+    } catch (err) {
+      setError(err.message || 'Failed to start interview.');
+      setIsCreatingInterview(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -165,9 +180,9 @@ export function EvidenceReport() {
               <Badge key={lang} variant="secondary">{lang}</Badge>
             ))}
           </div>
-          <Link to={`/projects/${data.analysisId}/interview`}>
-            <Button variant="primary">Start Interview</Button>
-          </Link>
+          <Button variant="primary" onClick={handleStartInterview} disabled={isCreatingInterview}>
+            {isCreatingInterview ? 'Preparing...' : 'Start Interview'}
+          </Button>
         </div>
       </div>
 

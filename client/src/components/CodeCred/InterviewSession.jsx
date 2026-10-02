@@ -1,81 +1,64 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { generateQuestions, evaluateAnswers } from '../../services/projectService';
+import { getInterview, evaluateAnswers } from '../../services/projectService';
 import { Panel } from '../ui/Panel';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 
 export function InterviewSession() {
-  const { analysisId } = useParams();
+  const { analysisId, sessionId } = useParams();
   const [questions, setQuestions] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // User answers keyed by question ID
   const [answers, setAnswers] = useState({});
-  
-  // Evaluation state
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluationError, setEvaluationError] = useState('');
   const [validationError, setValidationError] = useState('');
-  // Evaluations keyed by question ID
+
   const [evaluations, setEvaluations] = useState(null);
   const [knowledgeGaps, setKnowledgeGaps] = useState(null);
+  const [sessionStatus, setSessionStatus] = useState('in_progress');
 
-  const fetchQuestions = async () => {
+  const fetchSession = async () => {
     setIsLoading(true);
     setError('');
-    setEvaluationError('');
-    setValidationError('');
-    setEvaluations(null);
-    setKnowledgeGaps(null);
     try {
-      const result = await generateQuestions(analysisId);
-      setQuestions(result.questions || []);
-      setAnswers({});
+      const session = await getInterview(analysisId, sessionId);
+      setQuestions(session.questions || []);
+      setSessionStatus(session.status);
+
+      const initialAnswers = {};
+      if (session.answers && session.answers.length > 0) {
+        session.answers.forEach(a => {
+          initialAnswers[a.questionId] = a.answer;
+        });
+      }
+      setAnswers(initialAnswers);
+
+      if (session.status === 'completed') {
+        const evalMap = {};
+        if (session.evaluations) {
+          session.evaluations.forEach(ev => {
+            evalMap[ev.questionId] = ev;
+          });
+        }
+        setEvaluations(evalMap);
+        setKnowledgeGaps(session.knowledgeGaps || []);
+      }
     } catch (err) {
-      setError(err.message || 'Failed to generate questions.');
-      setQuestions(null);
+      setError(err.message || 'Failed to retrieve the interview session.');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    let isMounted = true;
-    
-    const initialize = async () => {
-      setIsLoading(true);
-      setError('');
-      setEvaluationError('');
-      setValidationError('');
-      setEvaluations(null);
-      setKnowledgeGaps(null);
-      try {
-        const result = await generateQuestions(analysisId);
-        if (isMounted) {
-          setQuestions(result.questions || []);
-          setAnswers({});
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err.message || 'Failed to generate questions.');
-          setQuestions(null);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    initialize();
-    
-    return () => { isMounted = false; };
-  }, [analysisId]);
+    fetchSession();
+  }, [analysisId, sessionId]);
 
   const handleAnswerChange = (questionId, value) => {
-    if (evaluations) return; // Freeze answers if evaluated
+    if (sessionStatus === 'completed') return;
     setAnswers(prev => ({
       ...prev,
       [questionId]: value
@@ -86,7 +69,6 @@ export function InterviewSession() {
     setValidationError('');
     setEvaluationError('');
 
-    // Client-side UX validation
     for (const q of questions) {
       const ans = answers[q.id];
       if (!ans || ans.trim() === '') {
@@ -102,7 +84,7 @@ export function InterviewSession() {
         answer: answers[q.id]
       }));
 
-      const result = await evaluateAnswers(analysisId, sessionData);
+      const result = await evaluateAnswers(analysisId, sessionId, sessionData);
       
       const evalMap = {};
       result.evaluations.forEach(ev => {
@@ -110,6 +92,7 @@ export function InterviewSession() {
       });
       setEvaluations(evalMap);
       setKnowledgeGaps(result.knowledgeGaps || []);
+      setSessionStatus('completed');
     } catch (err) {
       setEvaluationError(err.message || 'An error occurred during evaluation.');
     } finally {
@@ -136,7 +119,7 @@ export function InterviewSession() {
             <Link to={`/projects/${analysisId}`}>
               <Button variant="secondary">Back to Report</Button>
             </Link>
-            <Button variant="primary" onClick={fetchQuestions}>Retry</Button>
+            <Button variant="primary" onClick={fetchSession}>Retry</Button>
           </div>
         </div>
       </div>
