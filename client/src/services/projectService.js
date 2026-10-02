@@ -1,5 +1,13 @@
+const getApiUrl = (path) => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  if (baseUrl.endsWith('/') && path.startsWith('/')) {
+    return baseUrl + path.slice(1);
+  }
+  return baseUrl + path;
+};
+
 export async function analyzeProject(repositoryUrl) {
-  const response = await fetch('/api/projects/analyze', {
+  const response = await fetch(getApiUrl('/api/projects/analyze'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -17,7 +25,7 @@ export async function analyzeProject(repositoryUrl) {
 }
 
 export async function getProjectAnalysis(analysisId) {
-  const response = await fetch(`/api/projects/${analysisId}`);
+  const response = await fetch(getApiUrl(`/api/projects/${analysisId}`));
   const data = await response.json();
 
   if (!response.ok || !data.success) {
@@ -28,7 +36,7 @@ export async function getProjectAnalysis(analysisId) {
 }
 
 export async function createInterview(analysisId) {
-  const response = await fetch(`/api/projects/${analysisId}/interviews`, {
+  const response = await fetch(getApiUrl(`/api/projects/${analysisId}/interviews`), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -45,7 +53,7 @@ export async function createInterview(analysisId) {
 }
 
 export async function getInterview(analysisId, sessionId) {
-  const response = await fetch(`/api/projects/${analysisId}/interviews/${sessionId}`);
+  const response = await fetch(getApiUrl(`/api/projects/${analysisId}/interviews/${sessionId}`));
   const data = await response.json();
 
   if (!response.ok || !data.success) {
@@ -56,7 +64,7 @@ export async function getInterview(analysisId, sessionId) {
 }
 
 export async function evaluateAnswers(analysisId, sessionId, sessionData) {
-  const response = await fetch(`/api/projects/${analysisId}/interviews/${sessionId}/evaluate`, {
+  const response = await fetch(getApiUrl(`/api/projects/${analysisId}/interviews/${sessionId}/evaluate`), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
