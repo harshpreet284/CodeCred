@@ -11,6 +11,10 @@ export const errorHandler = (err, req, res, next) => {
     statusCode = 400;
     message = 'Malformed JSON payload';
     code = 'INVALID_JSON';
+  } else if (err.type === 'entity.too.large') {
+    statusCode = 413;
+    message = 'Request payload too large';
+    code = 'PAYLOAD_TOO_LARGE';
   }
 
   // Protect internal details in production
