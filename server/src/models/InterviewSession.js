@@ -4,9 +4,7 @@ const QuestionSchema = new mongoose.Schema({
   id: { type: String, required: true },
   text: { type: String, required: true },
   category: { type: String, required: true },
-  difficulty: { type: String, required: true },
-  targetEvidenceRefs: [{ type: String }],
-  evidenceReasoning: { type: String }
+  difficulty: { type: String, required: true }
 }, { _id: false });
 
 const AnswerSchema = new mongoose.Schema({

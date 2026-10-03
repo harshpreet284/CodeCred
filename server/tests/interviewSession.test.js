@@ -75,9 +75,9 @@ test('Interview Session Persistence', async (t) => {
   await t.test('createInterviewSession creates a session with questions and in_progress status', async (t) => {
     runTestWithMock({
       questions: [
-        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' }
+        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?' }
       ]
     });
     
@@ -107,9 +107,9 @@ test('Interview Session Persistence', async (t) => {
   await t.test('getInterviewSession retrieves exactly the persisted session', async (t) => {
     runTestWithMock({
       questions: [
-        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' }
+        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?' }
       ]
     });
     const created = await createInterviewSession(fakeAnalysisId);
@@ -133,9 +133,9 @@ test('Interview Session Persistence', async (t) => {
   await t.test('evaluateInterviewSession persists answers, evaluations, and gaps, and changes status to completed', async (t) => {
     runTestWithMock({
       questions: [
-        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' }
+        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?' }
       ]
     });
     const created = await createInterviewSession(fakeAnalysisId);
@@ -172,9 +172,9 @@ test('Interview Session Persistence', async (t) => {
   await t.test('evaluateInterviewSession rejects evaluating a completed session', async (t) => {
     runTestWithMock({
       questions: [
-        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' }
+        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?' }
       ]
     });
     const created = await createInterviewSession(fakeAnalysisId);
@@ -204,9 +204,9 @@ test('Interview Session Persistence', async (t) => {
   await t.test('evaluateInterviewSession rejects malformed sessionData', async (t) => {
     runTestWithMock({
       questions: [
-        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' }
+        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?' }
       ]
     });
     const created = await createInterviewSession(fakeAnalysisId);
@@ -223,9 +223,9 @@ test('Interview Session Persistence', async (t) => {
   await t.test('evaluateInterviewSession rejects questionIds that do not belong to the session', async (t) => {
     runTestWithMock({
       questions: [
-        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' }
+        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?' }
       ]
     });
     const created = await createInterviewSession(fakeAnalysisId);
@@ -242,9 +242,9 @@ test('Interview Session Persistence', async (t) => {
   await t.test('evaluateInterviewSession does not mark session completed if AI throws', async (t) => {
     runTestWithMock({
       questions: [
-        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' },
-        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?', targetEvidenceRefs: ['ev_001'], evidenceReasoning: 'Express is a framework.' }
+        { category: 'architecture', difficulty: 'beginner', text: 'How does Express work?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'Why use Express?' },
+        { category: 'architecture', difficulty: 'beginner', text: 'What is Express routing?' }
       ]
     });
     const created = await createInterviewSession(fakeAnalysisId);

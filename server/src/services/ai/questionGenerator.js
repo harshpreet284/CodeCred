@@ -7,28 +7,14 @@ const SYSTEM_INSTRUCTION = `
 You are a senior technical interviewer.
 Your goal is to generate exactly 3 to 5 distinct, highly relevant interview questions based ONLY on the provided repository Evidence Catalog.
 
-STEP 1:
-Select one or more evidence IDs from the provided Evidence Catalog.
+Generate interview questions grounded in the supplied repository evidence. Do not invent technologies, frameworks, libraries, files, architecture, implementation details, or behaviors that are not supported by the supplied evidence.
 
-STEP 2:
-Provide a short factual evidence justification describing the repository concepts directly supported by those selected evidence items.
-
-STEP 3:
-Generate the interview question using ONLY concepts directly supported by the selected evidence.
-
-CRITICAL RULE:
-Every technical concept, technology, framework, library, protocol, mechanism, or repository-specific term appearing in the question must be supported by at least one selected evidence reference.
-Do not introduce a technically related concept merely because it is common knowledge or associated with the repository.
-The question must be derived from the selected evidence, not the other way around.
-Do not invent evidence IDs.
-Do not output technicalEntities.
+Do not output evidence IDs or technical entity metadata.
 
 Output strictly valid JSON matching this schema:
 {
   "questions": [
     {
-      "targetEvidenceRefs": ["<VALID_EVIDENCE_ID>"],
-      "evidenceReasoning": "Concise factual justification of why the evidence supports the question",
       "category": "architecture|implementation|database|api|security|testing|deployment|ecosystem",
       "difficulty": "beginner|intermediate|advanced",
       "text": "The question text derived ONLY from selected evidence"
@@ -39,28 +25,12 @@ Output strictly valid JSON matching this schema:
 Rules:
 1. DO NOT invent technologies or assume features that are not in the context.
 2. YOU MUST supply exactly 3 to 5 questions.
-3. Every question must reference at least one valid evidenceId from the context in 'targetEvidenceRefs'.
-4. Do not include duplicate questions or heavily overlapping topics.
-5. Do not generate question IDs.
-6. Only output valid JSON.
+3. Do not include duplicate questions or heavily overlapping topics.
+4. Do not generate question IDs.
+5. Only output valid JSON.
 `;
 
 const generateQuestionsWithRetry = async (contextString, aiContext, maxRetries = 1) => {
-  const validEvidenceIds = [];
-  const collectEvidenceIds = (obj) => {
-    if (!obj) return;
-    if (typeof obj === 'object') {
-      if (obj.evidenceId) {
-        validEvidenceIds.push(obj.evidenceId);
-      }
-      Object.values(obj).forEach(collectEvidenceIds);
-    }
-  };
-  collectEvidenceIds(aiContext.technical_evidence);
-  
-  // JSON Schema requires at least one enum value. If empty, use a placeholder.
-  const evidenceEnum = validEvidenceIds.length > 0 ? validEvidenceIds : ['NONE_AVAILABLE'];
-
   let attempt = 0;
   
   while (attempt <= maxRetries) {
@@ -81,19 +51,11 @@ const generateQuestionsWithRetry = async (contextString, aiContext, maxRetries =
                 items: {
                   type: "object",
                   properties: {
-                    targetEvidenceRefs: { 
-                      type: "array", 
-                      items: { 
-                        type: "string",
-                        enum: evidenceEnum 
-                      } 
-                    },
-                    evidenceReasoning: { type: "string" },
                     category: { type: "string" },
                     difficulty: { type: "string" },
                     text: { type: "string" }
                   },
-                  required: ["targetEvidenceRefs", "evidenceReasoning", "category", "difficulty", "text"],
+                  required: ["category", "difficulty", "text"],
                   additionalProperties: false
                 }
               }

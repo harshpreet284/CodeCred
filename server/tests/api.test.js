@@ -121,22 +121,16 @@ test('API Integration (Supertest)', async (t) => {
       questions: [
         {
           text: "How does Express work here?",
-          targetEvidenceRefs: ["ev_001"],
-          evidenceReasoning: "Uses Express.",
           category: "architecture",
           difficulty: "beginner"
         },
         {
           text: "Why did you choose Express?",
-          targetEvidenceRefs: ["ev_001"],
-          evidenceReasoning: "Uses Express.",
           category: "architecture",
           difficulty: "beginner"
         },
         {
           text: "Is Express used effectively?",
-          targetEvidenceRefs: ["ev_001"],
-          evidenceReasoning: "Uses Express.",
           category: "architecture",
           difficulty: "beginner"
         }
@@ -155,8 +149,6 @@ test('API Integration (Supertest)', async (t) => {
     sessionId = res.body.data.id;
     assert.ok(sessionId);
 
-    // Assert targetEvidenceRefs and technical_evidence are stripped
-    assert.strictEqual(res.body.data.questions[0].targetEvidenceRefs, undefined);
     assert.strictEqual(res.body.data.technical_evidence, undefined);
   });
 
@@ -169,7 +161,6 @@ test('API Integration (Supertest)', async (t) => {
     assert.strictEqual(res.body.data.id, sessionId);
     assert.strictEqual(res.body.data.status, 'in_progress');
     assert.strictEqual(res.body.data.questions.length, 3);
-    assert.strictEqual(res.body.data.questions[0].targetEvidenceRefs, undefined);
   });
 
   await t.test('5. EVALUATION SUCCESS', async () => {

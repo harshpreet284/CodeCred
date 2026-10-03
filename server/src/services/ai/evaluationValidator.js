@@ -7,20 +7,6 @@ import { AppError } from '../../utils/AppError.js';
  * @param {Object} aiContext - The generated AI context to verify evidence refs
  */
 export const validateSessionData = (sessionData, aiContext) => {
-  // Collect all valid evidence IDs from aiContext for fast lookup
-  const validEvidenceIds = new Set();
-  
-  const collectEvidenceIds = (obj) => {
-    if (!obj) return;
-    if (typeof obj === 'object') {
-      if (obj.evidenceId) {
-        validEvidenceIds.add(obj.evidenceId);
-      }
-      Object.values(obj).forEach(collectEvidenceIds);
-    }
-  };
-  collectEvidenceIds(aiContext.technical_evidence);
-
   for (let i = 0; i < sessionData.length; i++) {
     const item = sessionData[i];
     
@@ -40,21 +26,6 @@ export const validateSessionData = (sessionData, aiContext) => {
 
     if (!question.text || typeof question.text !== 'string') {
       throw new AppError(`Question text is missing or invalid for question ${question.id}`, 400, 'INVALID_INPUT');
-    }
-
-    if (!question.targetEvidenceRefs || !Array.isArray(question.targetEvidenceRefs)) {
-      throw new AppError(`targetEvidenceRefs must be an array for question ${question.id}`, 400, 'INVALID_INPUT');
-    }
-    
-    if (question.targetEvidenceRefs.length === 0) {
-      throw new AppError(`Question ${question.id} must have at least one targetEvidenceRef`, 400, 'INVALID_INPUT');
-    }
-
-    // Evidence consistency check: do refs exist?
-    for (const ref of question.targetEvidenceRefs) {
-      if (!validEvidenceIds.has(ref)) {
-        throw new AppError(`Invalid evidence reference '${ref}' for question ${question.id}`, 400, 'INVALID_INPUT');
-      }
     }
 
     if (answer === undefined || typeof answer !== 'string') {

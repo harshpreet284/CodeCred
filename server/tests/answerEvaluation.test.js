@@ -39,8 +39,7 @@ const validSessionData = [
   {
     question: {
       id: 'q_001',
-      text: 'How does Express route traffic?',
-      targetEvidenceRefs: ['ev_001']
+      text: 'How does Express route traffic?'
     },
     answer: 'Using routers.'
   }
@@ -117,16 +116,7 @@ test('Answer Evaluation Service (AI Logic)', async (t) => {
     assert.strictEqual(result.evaluations[0].questionId, 'q_001');
   });
 
-  await t.test('I. Invalid evidence reference -> reject before AI provider', async () => {
-    runTestWithMock({}); // should not be called
-    try {
-      await evaluateSessionAnswers(doc, [{ question: { ...validSessionData[0].question, targetEvidenceRefs: ['invalid_id'] }, answer: 'Exp' }]);
-      assert.fail('Should have thrown');
-    } catch (err) {
-      assert.strictEqual(err.statusCode, 400);
-      assert.strictEqual(aiCallCount, 0);
-    }
-  });
+  // Test I removed because targetEvidenceRefs is no longer part of validation
 
   await t.test('A/L/M/Y. Valid single evaluation mapping & order reconstruction', async () => {
     runTestWithMock({
@@ -139,7 +129,7 @@ test('Answer Evaluation Service (AI Logic)', async (t) => {
     
     const result = await evaluateSessionAnswers(doc, [
         validSessionData[0],
-        { question: { id: 'q_002', text: 'Q2', targetEvidenceRefs: ['ev_001'] }, answer: 'A2' }
+        { question: { id: 'q_002', text: 'Q2' }, answer: 'A2' }
     ]);
     
     assert.strictEqual(result.evaluations[0].questionId, 'q_001');
