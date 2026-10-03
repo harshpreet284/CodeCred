@@ -169,6 +169,42 @@ test('Interview Session Persistence', async (t) => {
     assert.strictEqual(dbSession.knowledgeGaps.length, 1);
   });
 
+  await t.test('evaluateInterviewSession persists complete, partial, and incomplete evaluations', async (t) => {
+    runTestWithMock({
+      questions: [
+        { category: 'architecture', difficulty: 'beginner', text: 'Q1' },
+        { category: 'architecture', difficulty: 'beginner', text: 'Q2' },
+        { category: 'architecture', difficulty: 'beginner', text: 'Q3' }
+      ]
+    });
+    const created = await createInterviewSession(fakeAnalysisId);
+
+    runTestWithMock({
+      evaluations: [
+        { questionId: created.questions[0].id, isCorrect: true, completeness: 'complete', feedback: 'F1', unsupportedClaims: [] },
+        { questionId: created.questions[1].id, isCorrect: true, completeness: 'partial', feedback: 'F2', unsupportedClaims: [] },
+        { questionId: created.questions[2].id, isCorrect: false, completeness: 'incomplete', feedback: 'F3', unsupportedClaims: [] }
+      ],
+      knowledgeGaps: []
+    });
+
+    const sessionData = [
+      { question: created.questions[0], answer: 'A1' },
+      { question: created.questions[1], answer: 'A2' },
+      { question: created.questions[2], answer: 'A3' }
+    ];
+
+    const result = await evaluateInterviewSession(fakeAnalysisId, created.id, sessionData);
+
+    assert.strictEqual(result.evaluations.length, 3);
+
+    const dbSession = await InterviewSession.findById(created.id);
+    const dbCompleteness = dbSession.evaluations.map(e => e.completeness);
+    assert.ok(dbCompleteness.includes('complete'));
+    assert.ok(dbCompleteness.includes('partial'));
+    assert.ok(dbCompleteness.includes('incomplete'));
+  });
+
   await t.test('evaluateInterviewSession rejects evaluating a completed session', async (t) => {
     runTestWithMock({
       questions: [

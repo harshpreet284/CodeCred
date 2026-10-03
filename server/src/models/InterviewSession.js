@@ -15,7 +15,7 @@ const AnswerSchema = new mongoose.Schema({
 const EvaluationSchema = new mongoose.Schema({
   questionId: { type: String, required: true },
   isCorrect: { type: Boolean, required: true },
-  completeness: { type: String, enum: ['complete', 'partial', 'missing'], required: true },
+  completeness: { type: String, enum: ['incomplete', 'partial', 'complete'], required: true },
   feedback: { type: String, required: true },
   unsupportedClaims: [{ type: String }]
 }, { _id: false });
